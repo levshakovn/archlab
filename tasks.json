@@ -1,0 +1,183 @@
+{
+    "puzzles": [
+      {
+        "id": "puzzle-static-site-cdn",
+        "title": "Static Website with CDN",
+        "scenario": "Your company needs a simple marketing website with static content (HTML/CSS/JS). Users are global, and the site must be served over HTTPS with low latency. S3 objects must not be directly publicly accessible; all access should go through a CDN.",
+        "requirements": [
+          "Host static content in an S3 bucket.",
+          "Serve content through a CDN distribution.",
+          "Ensure traffic uses HTTPS.",
+          "Prevent direct public access to S3 objects (only via CDN)."
+        ],
+        "allowedServices": [
+          "S3",
+          "S3 Access Point",
+          "CloudFront",
+          "CloudFront Function",
+          "Lambda@Edge",
+          "Route 53",
+          "ACM",
+          "WAF",
+          "Shield",
+          "VPC Endpoint",
+          "CloudWatch Logs"
+        ],
+        "commonMistakes": [
+          "Making the S3 bucket public instead of using a private bucket with CDN origin access.",
+          "Skipping HTTPS or not attaching a certificate to the CDN.",
+          "Pointing DNS directly to the S3 website endpoint instead of the CDN.",
+          "Not restricting the CDN origin access to the S3 bucket."
+        ]
+      },
+      {
+        "id": "puzzle-3tier-basic",
+        "title": "Highly Available 3-Tier Web App",
+        "scenario": "Design a highly available 3-tier web application in a single AWS region. Users access the app over HTTPS via a load balancer. The web tier must be internet-facing, the application tier must not be directly reachable from the internet, and the database must be private and highly available across at least two Availability Zones.",
+        "requirements": [
+          "Use a load balancer to receive HTTPS traffic from the internet.",
+          "Place web/application servers in at least two Availability Zones.",
+          "Place the database in private subnets and ensure it is not publicly accessible.",
+          "Use multi-AZ or an equivalent mechanism for database high availability.",
+          "Separate public and private subnets within a VPC."
+        ],
+        "allowedServices": [
+          "VPC",
+          "Subnet",
+          "Internet Gateway",
+          "NAT Gateway",
+          "Route 53",
+          "ALB",
+          "NLB",
+          "EC2",
+          "ASG",
+          "RDS",
+          "Aurora",
+          "ElastiCache",
+          "EFS",
+          "Security Group",
+          "NACL",
+          "CloudWatch",
+          "CloudWatch Logs",
+          "AWS Backup",
+          "Systems Manager",
+          "Transit Gateway",
+          "WAF"
+        ],
+        "commonMistakes": [
+          "Putting the database in a public subnet.",
+          "Using a single Availability Zone for app or DB while claiming high availability.",
+          "Letting EC2 instances be directly exposed to the internet instead of going through a load balancer.",
+          "Skipping NAT Gateways/instances for private subnet outbound internet access when needed."
+        ]
+      },
+      {
+        "id": "puzzle-serverless-api",
+        "title": "Serverless REST API Backend",
+        "scenario": "A startup needs a backend for a mobile notes app. Traffic is spiky, and they want to pay only for what they use with minimal operational overhead. The API should expose CRUD operations for notes, be secure, and scale automatically without managing servers.",
+        "requirements": [
+          "Expose a REST API endpoint to clients.",
+          "Use serverless compute for handling requests.",
+          "Use a managed, highly available data store for notes.",
+          "Ensure the design can scale automatically with traffic.",
+          "Avoid managing or patching servers for the API layer."
+        ],
+        "allowedServices": [
+          "API Gateway",
+          "Lambda",
+          "DynamoDB",
+          "Aurora Serverless",
+          "Cognito",
+          "S3",
+          "KMS",
+          "IAM",
+          "CloudWatch",
+          "CloudWatch Logs",
+          "SQS",
+          "SNS",
+          "Step Functions",
+          "AppSync",
+          "EventBridge",
+          "WAF",
+          "CloudFront",
+          "Route 53",
+          "EC2"
+        ],
+        "commonMistakes": [
+          "Using EC2 instances behind a load balancer instead of Lambda for the main API.",
+          "Choosing a self-managed, single-AZ database instead of a managed service.",
+          "Not securing API endpoints (no authentication/authorization or overly permissive access).",
+          "Building a tightly coupled monolithic Lambda without clear separation of responsibilities."
+        ]
+      },
+      {
+        "id": "puzzle-async-processing",
+        "title": "Asynchronous Image Processing Pipeline",
+        "scenario": "Users upload images that must be processed (e.g., resized, watermarked). Processing is CPU-intensive and takes several seconds. The web frontend must stay responsive and return quickly while ensuring every image is processed at least once and failures are handled.",
+        "requirements": [
+          "Decouple image upload from image processing.",
+          "Use a queue or pub/sub mechanism between the web tier and workers.",
+          "Ensure failed processing attempts are captured for later review (dead-letter behavior).",
+          "Allow the number of workers to scale independently from the front end.",
+          "Store original and processed images reliably."
+        ],
+        "allowedServices": [
+          "S3",
+          "S3 Event Notification",
+          "SQS",
+          "SNS",
+          "Lambda",
+          "EC2",
+          "ASG",
+          "ECS",
+          "Fargate",
+          "Batch",
+          "Step Functions",
+          "EventBridge",
+          "ECR",
+          "CloudWatch",
+          "CloudWatch Logs",
+          "DLQ"
+        ],
+        "commonMistakes": [
+          "Processing images synchronously in the web/API request path.",
+          "Using direct synchronous calls from the web tier to workers without a queue or event bus.",
+          "Not configuring any dead-letter handling for failed messages.",
+          "Tightly coupling processing to a single EC2 instance without any scaling mechanism."
+        ]
+      },
+      {
+        "id": "puzzle-data-lake-analytics",
+        "title": "Log Storage and Ad-hoc Analytics",
+        "scenario": "An application generates large volumes of log data every day. The business wants to keep 12 months of logs and run occasional ad-hoc SQL queries on this data without managing any long-running analytics clusters or databases.",
+        "requirements": [
+          "Store raw log data durably and cost-effectively.",
+          "Support running ad-hoc SQL queries over the log data.",
+          "Avoid managing or patching persistent analytics servers or clusters.",
+          "Maintain a catalog or schema so queries can interpret the data.",
+          "Design for 12 months of retention with reasonable cost."
+        ],
+        "allowedServices": [
+          "S3",
+          "Athena",
+          "Glue",
+          "Lake Formation",
+          "Kinesis Data Firehose",
+          "Kinesis Data Streams",
+          "EventBridge",
+          "CloudWatch Logs",
+          "CloudWatch Logs Subscription Filter",
+          "Lambda",
+          "OpenSearch",
+          "Redshift Serverless",
+          "MSK"
+        ],
+        "commonMistakes": [
+          "Using a self-managed database or always-on analytics cluster instead of serverless querying.",
+          "Not partitioning or structuring data, making queries slow and expensive.",
+          "Skipping the data catalog, forcing manual schema management.",
+          "Storing logs in a high-cost transactional database instead of object storage."
+        ]
+      }
+    ]
+  }
