@@ -167,12 +167,6 @@ export function useCanvas(puzzleId: string | null = null) {
       }
     })
   }, [saveToHistory])
-  
-  // Wrapper to save history before move (for drag start)
-  const moveNodeWithHistory = useCallback((nodeId: string, x: number, y: number) => {
-    saveToHistory()
-    moveNode(nodeId, x, y, false)
-  }, [saveToHistory, moveNode])
 
   const deleteNode = useCallback((nodeId: string) => {
     saveToHistory()

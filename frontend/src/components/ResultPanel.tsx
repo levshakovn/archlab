@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+
+import { useState, useEffect } from 'react'
 import { GradingResult } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import { LoginModal } from './auth/LoginModal'
@@ -27,26 +28,23 @@ export function ResultPanel({ result, onClose }: Props) {
   const { user } = useAuth()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showSignUpModal, setShowSignUpModal] = useState(false)
-  const [showCelebration, setShowCelebration] = useState(false)
   const [celebrationMessage, setCelebrationMessage] = useState<string>('')
 
-  if (!result) return null
-
   // Calculate percentage score (total is out of 10, convert to percentage)
-  const percentageScore = Math.round((result.scores.total / 10) * 100)
+  const percentageScore = result ? Math.round((result.scores.total / 10) * 100) : 0
 
-  // Trigger celebration animation when score is 100%
+  // Set celebration message when score is 100%
   useEffect(() => {
     if (percentageScore === 100) {
-      setShowCelebration(true)
       // Randomly select a celebration message
       const randomMessage = CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)]
       setCelebrationMessage(randomMessage)
-      // Hide celebration emojis after animation completes
-      const timer = setTimeout(() => setShowCelebration(false), 3000)
-      return () => clearTimeout(timer)
+    } else {
+      setCelebrationMessage('')
     }
   }, [percentageScore])
+
+  if (!result) return null
 
   const handleAIDiscuss = () => {
     // TODO: Implement AI discussion feature

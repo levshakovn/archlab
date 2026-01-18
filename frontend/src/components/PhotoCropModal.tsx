@@ -91,7 +91,7 @@ export function PhotoCropModal({ isOpen, imageSrc, onClose, onCropComplete }: Pr
     setZoom(zoom)
   }, [])
 
-  const onCropCompleteCallback = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+  const onCropCompleteCallback = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels)
   }, [])
 

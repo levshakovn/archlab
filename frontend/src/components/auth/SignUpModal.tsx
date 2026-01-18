@@ -52,8 +52,8 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
         setLastName('')
         setSuccess(false)
       }, 2000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create account. Please try again.')
       setLoading(false)
     }
   }
@@ -64,8 +64,8 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
     try {
       await signInWithGoogle()
       // Note: OAuth redirects away, so we don't need to close modal
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in with Google.')
       setLoading(false)
     }
   }

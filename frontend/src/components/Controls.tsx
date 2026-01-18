@@ -1,4 +1,4 @@
-import React from 'react'
+
 
 interface Props {
   nodeCount: number
@@ -8,7 +8,7 @@ interface Props {
   loading: boolean
 }
 
-export function Controls({ nodeCount, edgeCount, onGrade, onClear, loading }: Props) {
+export function Controls({ nodeCount, onGrade, onClear, loading }: Props) {
   return (
     <div className="p-4 flex items-center justify-center">
       <div className="flex gap-3">

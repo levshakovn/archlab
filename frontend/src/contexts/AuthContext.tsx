@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadProfile = async (userId: string) => {
@@ -108,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -121,7 +122,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
     // Track successful sign up
     analytics.trackUserSignedUp('email')
-    return data
   }
 
   const signInWithGoogle = async () => {
@@ -189,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {

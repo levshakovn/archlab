@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react'
+import { useState, memo } from 'react'
 import { getServiceLogoPath, normalizeServiceName } from '../utils/serviceLogo'
 
 interface Props {
@@ -24,11 +24,11 @@ const DEFAULT_AWS_LOGO = '/aws-logos/aws-default.svg'
  */
 function formatServiceNameForDisplay(serviceType: string): string {
   // Replace "@" with " @" for better wrapping (e.g., "Lambda@Edge" -> "Lambda @Edge")
-  return serviceType.replace(/@(\w+)/, (match, p1) => ` @${p1}`)
+  return serviceType.replace(/@(\w+)/, (_match, p1) => ` @${p1}`)
 }
 
 export const ServiceNode = memo(function ServiceNode({ serviceType, className = '', variant = 'horizontal' }: Props) {
-  const [logoError, setLogoError] = useState(false)
+  const [, setLogoError] = useState(false)
   const [logoLoaded, setLogoLoaded] = useState(false)
   const [useDefaultLogo, setUseDefaultLogo] = useState(false)
   

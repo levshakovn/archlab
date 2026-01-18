@@ -18,8 +18,9 @@ export function usePuzzles() {
     // Lazy load puzzles data
     loadPuzzlesData()
       .then((data) => {
-        setPuzzles(data.puzzles)
-        const initialPuzzle = data.puzzles[0]
+        // Type assertion: puzzles.json has correct structure but TypeScript is strict about optional props
+        setPuzzles(data.puzzles as unknown as Puzzle[])
+        const initialPuzzle = (data.puzzles[0] || null) as Puzzle | null
         setCurrentPuzzle(initialPuzzle)
         // Track initial puzzle load
         if (initialPuzzle) {

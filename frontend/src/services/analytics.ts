@@ -7,7 +7,7 @@
 declare global {
   interface Window {
     brick?: {
-      event: (name: string, properties?: Record<string, any>) => void
+      event: (name: string, properties?: Record<string, unknown>) => void
       page: (url: string) => void
     }
   }
@@ -28,7 +28,7 @@ if (ENABLED && !document.querySelector('script[data-brick-script]')) {
 /**
  * Track a custom event
  */
-export function trackEvent(eventName: string, properties?: Record<string, any>): void {
+export function trackEvent(eventName: string, properties?: Record<string, unknown>): void {
   if (!ENABLED) return
 
   try {

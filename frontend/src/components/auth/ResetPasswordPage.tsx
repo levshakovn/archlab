@@ -62,8 +62,8 @@ export function ResetPasswordPage() {
       setTimeout(() => {
         navigate('/')
       }, 2000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to reset password. The link may have expired.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reset password. The link may have expired.')
     } finally {
       setLoading(false)
     }

@@ -67,9 +67,9 @@ jobs:
         working-directory: ./frontend
         run: npm ci
       
-      - name: Run ESLint
+      - name: Run ESLint (check only)
         working-directory: ./frontend
-        run: npm run lint
+        run: npm run lint:check
       
       - name: Type check with TypeScript
         working-directory: ./frontend
@@ -114,16 +114,43 @@ jobs:
       - name: Start backend server
         working-directory: ./backend
         run: |
-          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          sleep 5
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+          echo $! > /tmp/backend.pid
+      
+      - name: Wait for backend to be ready
+        run: |
+          timeout=30
+          elapsed=0
+          while ! curl -f http://localhost:8000/health > /dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "Backend failed to start within ${timeout}s"
+              cat /tmp/backend.log
+              exit 1
+            fi
+            echo "Waiting for backend... (${elapsed}s)"
+            sleep 2
+            elapsed=$((elapsed + 2))
+          done
+          echo "Backend is ready!"
       
       - name: Test backend health endpoint
         run: |
-          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:8000/health
+      
+      - name: Test backend root endpoint
+        run: |
+          curl -f http://localhost:8000/ | grep -q "Welcome to ArchLab" || exit 1
       
       - name: Test backend API endpoint
         run: |
-          curl -f -X POST http://localhost:8000/api/v1/grade \
+          response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8000/api/v1/grade \
             -H "Content-Type: application/json" \
-            -d '{"puzzleId":"puzzle-3tier-basic","nodes":{"node-0":{"id":"node-0","serviceType":"ALB","label":"ALB","x":100,"y":100}},"edges":[]}' || exit 1
+            -d '{"puzzleId":"puzzle-3tier-basic","nodes":{"node-0":{"id":"node-0","serviceType":"ALB","label":"ALB","x":100,"y":100}},"edges":[]}')
+          http_code=$(echo "$response" | tail -n1)
+          if [ "$http_code" -ne 200 ]; then
+            echo "API request failed with HTTP $http_code"
+            echo "Response: $response"
+            exit 1
+          fi
+          echo "API endpoint test passed"
 

@@ -55,7 +55,6 @@ export function ProfilePage() {
   
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = useState(false)
-  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
@@ -82,8 +81,8 @@ export function ProfilePage() {
       setIsEditing(false)
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to update profile')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update profile')
     } finally {
       setSaving(false)
     }
@@ -146,8 +145,8 @@ export function ProfilePage() {
       setSuccess('Profile photo updated successfully!')
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to upload photo')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload photo')
     } finally {
       setUploadingPhoto(false)
     }
@@ -172,8 +171,8 @@ export function ProfilePage() {
     try {
       await signOut()
       // Redirect will happen automatically via auth state change
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign out')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign out')
     }
   }
 
@@ -204,13 +203,12 @@ export function ProfilePage() {
       await updatePassword(newPassword)
       setSuccess('Password changed successfully!')
       setIsChangingPassword(false)
-      setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to change password')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to change password')
     } finally {
       setChangingPassword(false)
     }
@@ -218,7 +216,6 @@ export function ProfilePage() {
 
   const handleCancelPasswordChange = () => {
     setIsChangingPassword(false)
-    setCurrentPassword('')
     setNewPassword('')
     setConfirmPassword('')
     setError(null)

@@ -138,9 +138,7 @@ export function PuzzleWorkspace() {
         {/* Left Sidebar - Puzzle Details and Services */}
         <Sidebar
           puzzle={currentPuzzle}
-          puzzles={puzzles}
           onDragStart={handleDragStart}
-          onPuzzleSelect={handleSelectPuzzle}
           bestScores={bestScores}
         />
 

@@ -32,8 +32,8 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignUp, onSwitchToForgot
       onClose()
       setEmail('')
       setPassword('')
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in. Please check your credentials.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in. Please check your credentials.')
     } finally {
       setLoading(false)
     }
@@ -45,8 +45,8 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignUp, onSwitchToForgot
     try {
       await signInWithGoogle()
       // Note: OAuth redirects away, so we don't need to close modal
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in with Google.')
       setLoading(false)
     }
   }

@@ -1,43 +1,15 @@
-import React, { useState } from 'react'
+
+import { useState } from 'react'
 import { Puzzle } from '../types'
 import { ServiceNode } from './ServiceNode'
 
 interface Props {
   puzzle: Puzzle | null
-  puzzles: Puzzle[]
   onDragStart: (serviceType: string) => void
-  onPuzzleSelect: (puzzleId: string) => void
   bestScores?: Record<string, number> // Map of puzzleId -> bestScore
 }
 
-/**
- * Get color classes for score badge
- */
-function getScoreColor(score: number): { bg: string; text: string; border: string } {
-  if (score === 100) {
-    return {
-      bg: 'bg-green-50',
-      text: 'text-green-700',
-      border: 'border-green-400',
-    }
-  } else if (score >= 80) {
-    return {
-      bg: 'bg-yellow-50',
-      text: 'text-yellow-700',
-      border: 'border-yellow-400',
-    }
-  } else {
-    return {
-      bg: 'bg-red-50',
-      text: 'text-red-700',
-      border: 'border-red-400',
-    }
-  }
-}
-
-export function Sidebar({ puzzle, puzzles, onDragStart, onPuzzleSelect, bestScores = {} }: Props) {
-  const bestScore = puzzle ? bestScores[puzzle.id] : undefined
-  const scoreColors = bestScore !== undefined ? getScoreColor(bestScore) : null
+export function Sidebar({ puzzle, onDragStart }: Props) {
   const [expandedHintIndex, setExpandedHintIndex] = useState<number | null>(null)
 
   return (

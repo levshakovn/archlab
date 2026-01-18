@@ -30,8 +30,8 @@ export function ForgotPasswordModal({ isOpen, onClose, onSwitchToLogin }: Forgot
         setEmail('')
         setSuccess(false)
       }, 3000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to send reset email. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send reset email. Please try again.')
     } finally {
       setLoading(false)
     }

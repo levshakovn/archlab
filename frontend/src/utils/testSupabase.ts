@@ -35,7 +35,7 @@ export async function testSupabaseConnection() {
     }
     
     // Test 4: Try to query profiles table (should work even if empty)
-    const { data: profilesData, error: profilesError } = await supabase
+    const { error: profilesError } = await supabase
       .from('profiles')
       .select('count')
       .limit(1)
@@ -87,5 +87,6 @@ export async function testSupabaseConnection() {
 // Auto-run in browser console if imported
 if (typeof window !== 'undefined') {
   // Make it available globally for easy testing
-  (window as any).testSupabase = testSupabaseConnection
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as unknown as { testSupabase?: () => Promise<unknown> }).testSupabase = testSupabaseConnection
 }

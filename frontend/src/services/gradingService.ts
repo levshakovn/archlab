@@ -1,4 +1,4 @@
-import { Puzzle, GraphJSON, GradingResult, CanvasNode } from '../types'
+import { Puzzle, GraphJSON, GradingResult } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -239,8 +239,6 @@ function scoreByPuzzle(puzzleId: string, graph: GraphJSON, puzzle?: Puzzle) {
  */
 function checkArchitectureValidation(puzzle: Puzzle, graph: GraphJSON) {
   const serviceTypes = Object.values(graph.nodes).map((n) => n.serviceType)
-  const requiredServices = puzzle.errorRules?.requiredServices || {}
-  const requiredConnections = puzzle.errorRules?.requiredConnections || []
 
   // Helper to check if service exists (with flexible matching)
   const hasService = (serviceName: string): boolean => {
@@ -251,20 +249,6 @@ function checkArchitectureValidation(puzzle: Puzzle, graph: GraphJSON) {
     if (serviceName === 'ECS') return serviceTypes.some(s => ['ECS', 'Fargate'].includes(s))
     if (serviceName === 'Kinesis Data Streams') return serviceTypes.some(s => s.includes('Kinesis'))
     return serviceTypes.includes(serviceName)
-  }
-
-  // Helper to check if connection exists
-  const hasConnection = (from: string, to: string): boolean => {
-    return graph.edges.some((e) => {
-      const fromService = graph.nodes[e.from]?.serviceType
-      const toService = graph.nodes[e.to]?.serviceType
-      const fromMatch = (from === 'ALB' && ['ALB', 'NLB'].includes(fromService || '')) ||
-                       (from === 'CloudWatch' && fromService?.includes('CloudWatch')) ||
-                       (from === 'CloudWatch Alarms' && fromService?.includes('CloudWatch')) ||
-                       (from === 'Kinesis Data Streams' && fromService?.includes('Kinesis')) ||
-                       fromService === from
-      return fromMatch && toService === to
-    })
   }
 
   // Map requirements to validation checks (only check first 3 if more exist)
@@ -337,28 +321,6 @@ function checkConstraints(puzzleId: string, graph: GraphJSON): string[] {
   }
 
   return violations
-}
-
-// AWS service documentation URLs
-const AWS_DOCS: Record<string, string> = {
-  'S3': 'https://docs.aws.amazon.com/s3',
-  'CloudFront': 'https://docs.aws.amazon.com/cloudfront',
-  'ALB': 'https://docs.aws.amazon.com/elasticloadbalancing/latest/application',
-  'NLB': 'https://docs.aws.amazon.com/elasticloadbalancing/latest/network',
-  'EC2': 'https://docs.aws.amazon.com/ec2',
-  'ASG': 'https://docs.aws.amazon.com/autoscaling',
-  'RDS': 'https://docs.aws.amazon.com/rds',
-  'Aurora': 'https://docs.aws.amazon.com/aurora',
-  'DynamoDB': 'https://docs.aws.amazon.com/dynamodb',
-  'Lambda': 'https://docs.aws.amazon.com/lambda',
-  'API Gateway': 'https://docs.aws.amazon.com/apigateway',
-  'SQS': 'https://docs.aws.amazon.com/sqs',
-  'SNS': 'https://docs.aws.amazon.com/sns',
-  'Athena': 'https://docs.aws.amazon.com/athena',
-  'Cognito': 'https://docs.aws.amazon.com/cognito',
-  'Route 53': 'https://docs.aws.amazon.com/route53',
-  'ACM': 'https://docs.aws.amazon.com/acm',
-  'WAF': 'https://docs.aws.amazon.com/waf',
 }
 
 function generateFeedback(

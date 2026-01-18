@@ -162,7 +162,6 @@ export function Canvas({
     e.preventDefault()
     onConnectionStart(nodeId)
     if (canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect()
       const node = nodes[nodeId]
       // Start from right edge by default (will update as mouse moves)
       setConnectionPreview({
@@ -468,7 +467,7 @@ export function Canvas({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    handleConnectionHandleMouseDown(id, e as any)
+                    handleConnectionHandleMouseDown(id, e as unknown as React.MouseEvent)
                   }
                 }}
               />

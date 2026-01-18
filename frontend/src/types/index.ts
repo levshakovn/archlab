@@ -39,8 +39,8 @@ export interface FlowValidation {
 }
 
 export interface ErrorRules {
-  requiredServices?: Record<string, RequiredService>
-  forbiddenServices?: Record<string, ForbiddenService>
+  requiredServices?: Record<string, RequiredService | undefined>
+  forbiddenServices?: Record<string, ForbiddenService | undefined>
   requiredConnections?: ConnectionRule[]
   wrongConnections?: ConnectionRule[]
   serviceConfigErrors?: Record<string, ServiceConfigError[]>
