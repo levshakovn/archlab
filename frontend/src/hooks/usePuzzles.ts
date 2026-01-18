@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Puzzle } from '../types'
-import puzzlesData from '../data/puzzles.json'
+import { analytics } from '../services/analytics'
+
+// Lazy load puzzles data for code splitting
+async function loadPuzzlesData() {
+  // Dynamic import for code splitting - puzzles.json is large
+  const module = await import('../data/puzzles.json')
+  return module.default
+}
 
 export function usePuzzles() {
   const [puzzles, setPuzzles] = useState<Puzzle[]>([])
@@ -8,15 +15,31 @@ export function usePuzzles() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Load puzzles from JSON
-    setPuzzles(puzzlesData.puzzles)
-    setCurrentPuzzle(puzzlesData.puzzles[0])
-    setLoading(false)
+    // Lazy load puzzles data
+    loadPuzzlesData()
+      .then((data) => {
+        setPuzzles(data.puzzles)
+        const initialPuzzle = data.puzzles[0]
+        setCurrentPuzzle(initialPuzzle)
+        // Track initial puzzle load
+        if (initialPuzzle) {
+          analytics.trackPuzzleSelected(initialPuzzle.id, initialPuzzle.title)
+        }
+        setLoading(false)
+      })
+      .catch((error) => {
+        console.error('Failed to load puzzles:', error)
+        setLoading(false)
+      })
   }, [])
 
   const selectPuzzle = (puzzleId: string) => {
     const puzzle = puzzles.find((p) => p.id === puzzleId)
-    if (puzzle) setCurrentPuzzle(puzzle)
+    if (puzzle) {
+      setCurrentPuzzle(puzzle)
+      // Track puzzle selection
+      analytics.trackPuzzleSelected(puzzle.id, puzzle.title)
+    }
   }
 
   return {

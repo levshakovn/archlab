@@ -1,4 +1,4 @@
-.PHONY: help install install-frontend install-backend dev dev-frontend dev-backend dev-all test test-frontend test-backend lint lint-frontend lint-backend format format-backend clean build build-frontend build-backend
+.PHONY: help install install-frontend install-backend dev dev-frontend dev-backend dev-all test test-frontend test-backend lint lint-frontend lint-backend format format-backend clean build build-frontend build-backend check pre-deployment
 
 # Default target
 help:
@@ -9,6 +9,9 @@ help:
 	@echo "  make install-frontend     Install frontend dependencies"
 	@echo "  make install-backend      Install backend dependencies"
 	@echo ""
+	@echo "Verification:"
+	@echo "  ./scripts/verify-setup.sh Verify development environment setup"
+	@echo ""
 	@echo "Development:"
 	@echo "  make dev                  Start both frontend and backend (recommended)"
 	@echo "  make dev-frontend         Start frontend only (port 5173)"
@@ -18,6 +21,8 @@ help:
 	@echo "  make test                 Run all tests (frontend + backend)"
 	@echo "  make test-frontend        Run frontend tests (type check + build)"
 	@echo "  make test-backend         Run backend tests (pytest)"
+	@echo "  make check                Run pre-deployment verification"
+	@echo "  make pre-deployment       Same as check (pre-deployment checklist)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint                 Run all linters"
@@ -248,6 +253,19 @@ clean-backend:
 	rm -rf venv .venv __pycache__ .pytest_cache *.egg-info && \
 	find . -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true && \
 	find . -type f -name "*.pyc" -delete
+
+# Pre-deployment checks
+check: pre-deployment
+
+pre-deployment:
+	@echo "🔍 Running pre-deployment checks..."
+	@if [ -f "scripts/pre-deployment-check.sh" ]; then \
+		chmod +x scripts/pre-deployment-check.sh && \
+		./scripts/pre-deployment-check.sh; \
+	else \
+		echo "❌ Pre-deployment check script not found"; \
+		exit 1; \
+	fi
 
 # CI checks (runs all checks like CI)
 ci: install-backend-dev install-frontend lint test

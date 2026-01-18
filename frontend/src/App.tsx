@@ -1,129 +1,89 @@
-import React, { useState } from 'react'
-import { PuzzleSelector } from './components/PuzzleSelector'
-import { Sidebar } from './components/Sidebar'
-import { Canvas } from './components/Canvas'
-import { Controls } from './components/Controls'
-import { ResultPanel } from './components/ResultPanel'
-import { UserAvatar } from './components/UserAvatar'
-import { usePuzzles } from './hooks/usePuzzles'
-import { useCanvas } from './hooks/useCanvas'
-import { useGrading } from './hooks/useGrading'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { AuthProvider } from './contexts/AuthContext'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { HomePage } from './components/HomePage'
+import { usePageTracking } from './hooks/usePageTracking'
 
-function App() {
-  const { puzzles, currentPuzzle, selectPuzzle } = usePuzzles()
-  const { nodes, edges, addNode, moveNode, deleteNode, addEdge, deleteEdge, clear, exportGraph } = useCanvas()
-  const { result, loading, grade, clearResult } = useGrading()
-  const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
-  const [draggingServiceType, setDraggingServiceType] = useState<string | null>(null)
+// Lazy load heavy components for code splitting
+const PuzzleWorkspace = lazy(() => import('./components/PuzzleWorkspace').then(module => ({ default: module.PuzzleWorkspace })))
+const ProfilePage = lazy(() => import('./components/ProfilePage').then(module => ({ default: module.ProfilePage })))
+const SupabaseTest = lazy(() => import('./components/SupabaseTest').then(module => ({ default: module.SupabaseTest })))
+const AuthCallback = lazy(() => import('./components/auth/AuthCallback').then(module => ({ default: module.AuthCallback })))
+const ResetPasswordPage = lazy(() => import('./components/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })))
 
-  const handleDragStart = (serviceType: string) => {
-    setDraggingServiceType(serviceType)
-  }
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-gradient-to-br from-white to-blue-50/20 flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-text-secondary">Loading...</p>
+    </div>
+  </div>
+)
 
-  const handleServiceDrop = (x: number, y: number, serviceType: string) => {
-    addNode(serviceType, x - 60, y - 30) // Adjust for node center
-    setDraggingServiceType(null)
-  }
-
-  const handleGrade = async () => {
-    if (currentPuzzle) {
-      const graph = exportGraph(currentPuzzle.id)
-      await grade(currentPuzzle, graph)
-    }
-  }
-
-  const handleClear = () => {
-    clear()
-    clearResult()
-    setConnectingFrom(null)
-  }
-
-  const handleSelectPuzzle = (puzzleId: string) => {
-    selectPuzzle(puzzleId)
-    handleClear()
-  }
-
-  const handleConnectionStart = (nodeId: string) => {
-    setConnectingFrom(nodeId)
-  }
-
-  const handleConnectionEnd = (nodeId: string) => {
-    if (connectingFrom) {
-      addEdge(connectingFrom, nodeId)
-      setConnectingFrom(null)
-    }
-  }
-
-  const handleConnectionCancel = () => {
-    setConnectingFrom(null)
-  }
+function AppContent() {
+  usePageTracking()
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
-      <Sidebar
-        puzzle={currentPuzzle}
-        onDragStart={handleDragStart}
-      />
-
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary via-primary/95 to-secondary border-b-4 border-primary/20 p-6 shadow-md">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                <span className="text-2xl">🏗️</span>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-1">ArchLab</h1>
-                <p className="text-white/90 text-sm">AWS Architecture Practice Tool</p>
-              </div>
-            </div>
-            <UserAvatar
-              onClick={() => {
-                // TODO: Implement authentication modal/profile menu
-                console.log('User profile clicked - authentication coming soon')
-              }}
-            />
-          </div>
-          {currentPuzzle && (
-            <div className="mt-4">
-              <PuzzleSelector
-                puzzles={puzzles}
-                current={currentPuzzle}
-                onSelect={handleSelectPuzzle}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Canvas */}
-        <Canvas
-          nodes={nodes}
-          edges={edges}
-          onDrop={handleServiceDrop}
-          onNodeMove={moveNode}
-          onNodeDelete={deleteNode}
-          onEdgeDelete={deleteEdge}
-          onConnectionStart={handleConnectionStart}
-          onConnectionEnd={handleConnectionEnd}
-          onConnectionCancel={handleConnectionCancel}
-          connectingFrom={connectingFrom}
-          draggingServiceType={draggingServiceType}
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route 
+          path="/workspace" 
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PuzzleWorkspace />
+            </Suspense>
+          } 
         />
-
-        {/* Controls */}
-        <Controls
-          nodeCount={Object.keys(nodes).length}
-          edgeCount={edges.length}
-          onGrade={handleGrade}
-          onClear={handleClear}
-          loading={loading}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ProfilePage />
+              </Suspense>
+            </ProtectedRoute>
+          }
         />
-      </div>
+        <Route 
+          path="/test-supabase" 
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <SupabaseTest />
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/auth/callback" 
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <AuthCallback />
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/reset-password" 
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <ResetPasswordPage />
+            </Suspense>
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  )
+}
 
-      {/* Result Panel */}
-      {result && <ResultPanel result={result} onClose={clearResult} />}
-    </div>
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 

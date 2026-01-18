@@ -10,19 +10,7 @@ interface Props {
 
 export function Controls({ nodeCount, edgeCount, onGrade, onClear, loading }: Props) {
   return (
-    <div className="border-t border-gray-200 p-4 bg-gradient-to-r from-white to-blue-50/30 flex items-center justify-between shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-          <span className="w-2 h-2 bg-primary rounded-full"></span>
-          <span className="text-sm font-semibold text-primary">{nodeCount}</span>
-          <span className="text-xs text-text-secondary">nodes</span>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 rounded-full border border-secondary/20">
-          <span className="w-2 h-2 bg-secondary rounded-full"></span>
-          <span className="text-sm font-semibold text-secondary">{edgeCount}</span>
-          <span className="text-xs text-text-secondary">connections</span>
-        </div>
-      </div>
+    <div className="p-4 flex items-center justify-center">
       <div className="flex gap-3">
         <button
           onClick={onGrade}

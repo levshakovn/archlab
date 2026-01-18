@@ -14,10 +14,17 @@ ArchLab helps engineers master AWS architecture through interactive practice puz
 
 ## ✨ Features
 
-- **5 Fundamental Puzzles**: Static site CDN, 3-tier web app, serverless API, async processing, data lake
+- **20 Real-World Puzzles**: Covering static sites, serverless, containers, data analytics, ML, and more
 - **Interactive Canvas**: Drag-and-drop AWS services, position them, create connections
-- **Smart Feedback**: Scores based on correctness, reliability, security, and cost
+- **Smart Feedback**: Scores based on correctness, reliability, security, and cost with detailed suggestions
 - **Rich Service Palette**: 30+ AWS services available per puzzle
+- **Canvas Persistence**: Your work is automatically saved and persists across sessions
+- **Undo/Redo**: Full undo/redo support with keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z)
+- **User Authentication**: Sign up with email or Google OAuth (Supabase)
+- **Profile Management**: Upload and crop profile photos, change password, track your progress
+- **Task Completion Tracking**: See your best scores, completion history, and progress
+- **Mobile Support**: Touch interactions for mobile devices
+- **Enhanced Feedback**: Puzzle-specific suggestions with links to AWS documentation
 - **No Installation Required**: Works in your browser locally
 
 ## 🚀 Quick Start
@@ -80,7 +87,31 @@ git clone https://github.com/yourusername/archlab.git
 cd archlab
 ```
 
-### Step 2: Start the Frontend
+### Step 2: Configure Supabase (Required for Authentication)
+
+ArchLab uses Supabase for user authentication, profile management, and task completion tracking.
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com)
+2. **Get your credentials** from Project Settings → API
+3. **Create a `.env` file** in the `frontend` directory:
+   ```bash
+   cd frontend
+   cp .env.example .env  # If .env.example exists
+   ```
+4. **Add your Supabase credentials** to `.env`:
+   ```env
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
+5. **Set up the database**:
+   - Run `database/setup.sql` in Supabase SQL Editor (creates profiles table)
+   - Run `database/storage_setup.sql` in Supabase SQL Editor (creates storage bucket policies)
+   - Create a storage bucket named `profile-photos` in Supabase Dashboard
+   - Run `database/puzzle_completions_setup.sql` in Supabase SQL Editor (creates completions table)
+
+See [database/README.md](database/README.md) for detailed setup instructions.
+
+### Step 3: Start the Frontend
 
 The frontend can run standalone with mock grading (no backend required).
 
@@ -100,7 +131,9 @@ npm run dev
 
 The app will automatically reload when you make changes.
 
-### Step 3: Start the Backend (Optional)
+> **Note**: Without Supabase configuration, authentication features will be disabled, but you can still use the app to practice puzzles.
+
+### Step 4: Start the Backend (Optional)
 
 The backend is optional for the POC - the frontend uses mock grading by default. Start the backend if you want to test the API integration.
 
@@ -145,7 +178,7 @@ uvicorn app.main:app --reload
 - **API Docs**: http://localhost:8000/docs (Swagger UI)
 - **Health Check**: http://localhost:8000/health
 
-### Step 4: Verify Everything Works
+### Step 5: Verify Everything Works
 
 1. **Frontend**: Open http://localhost:5173 in your browser
    - You should see the ArchLab interface
@@ -214,7 +247,7 @@ archlab/
 │   │   ├── components/         # React components
 │   │   ├── hooks/              # Custom React hooks
 │   │   ├── types/              # TypeScript interfaces
-│   │   ├── data/               # puzzles.json (5 scenarios)
+│   │   ├── data/               # puzzles.json (20 scenarios)
 │   │   ├── services/           # API & grading logic
 │   │   ├── utils/              # Helper functions
 │   │   ├── styles/             # Global CSS
@@ -233,6 +266,11 @@ archlab/
 │   ├── requirements.txt
 │   └── README.md
 │
+├── database/              # Supabase database setup scripts
+│   ├── setup.sql         # Profiles table setup
+│   ├── storage_setup.sql # Storage bucket policies
+│   ├── puzzle_completions_setup.sql # Task completion tracking
+│   └── README.md         # Database setup guide
 ├── README.md
 ├── CHANGELOG.md
 └── .gitignore
@@ -309,39 +347,54 @@ Each puzzle has:
 - 30+ AWS services to choose from
 - Common mistakes to avoid
 
+**Want to add a new puzzle?** See [ADDING_PUZZLES.md](ADDING_PUZZLES.md) for a complete guide on how to create and add new puzzles to ArchLab.
+
 ## 🧠 How It Works
 
-1. **Select a puzzle** from the dropdown
-2. **Drag services** from the left sidebar onto the canvas
-3. **Connect services** by dragging from the connection handle (small circle) on the right edge of a service to another service
+1. **Select a puzzle** from the right sidebar (numbered list)
+2. **Drag services** from the left sidebar onto the canvas (or use touch on mobile)
+3. **Connect services** by clicking the connection handle (small circle) on a service, then clicking another service
    - Hover over a service to see the connection handle appear
-   - Click and drag from the handle to another service to create a connection
-   - A preview line shows where the connection will be made
+   - Click the handle to start connection mode
+   - Click another service to complete the connection
    - Click "Cancel" or click on the canvas to cancel a connection
-4. **Delete connections** by hovering over a connection line and clicking the × button that appears, or click directly on the connection line
-5. **Move services** by clicking and dragging them around the canvas
+4. **Delete connections** by hovering over a connection line and clicking the × button that appears
+5. **Move services** by clicking and dragging them around the canvas (works with touch on mobile)
 6. **Delete services** by clicking the × button on a service
-6. **Click "Grade Solution"** to receive AI-powered feedback
-7. **Learn why** certain choices are better than others
+7. **Undo/Redo** using buttons or keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z)
+8. **Click "Grade Solution"** to receive feedback with scores and suggestions
+9. **Your work is saved** automatically - refresh the page and it will be restored
+10. **Learn from feedback** - suggestions include links to AWS documentation
 
 ## 📈 Scoring
 
-Solutions are evaluated on four dimensions:
+Solutions are evaluated on four dimensions and displayed as a single percentage score:
 
 - **Correctness (40%)**: Does it solve the stated problem?
 - **Reliability (20%)**: Can it handle failures? Is it fault-tolerant?
 - **Security (20%)**: Are components properly isolated and protected?
 - **Cost (20%)**: Is it cost-optimized for the requirements?
 
+**Score Indicators:**
+- 🟢 **Green (100%)**: Perfect score
+- 🟡 **Yellow (80-99%)**: Good score
+- 🔴 **Red (<80%)**: Needs improvement
+
+Your best score for each puzzle is automatically tracked and displayed in the sidebar and profile page.
+
 ## 🔮 Roadmap
 
-- [ ] Real Claude API integration for grading
-- [ ] User authentication (Clerk)
-- [ ] Save/load diagrams
-- [ ] Progress tracking
-- [ ] More puzzles (15+ total)
-- [ ] Export to Terraform
-- [ ] Mobile responsive design
+- [x] User authentication (Supabase)
+- [x] Profile management with photo upload
+- [x] Task completion tracking
+- [x] Canvas persistence (localStorage)
+- [x] Undo/Redo functionality
+- [x] Enhanced grading feedback with suggestions
+- [x] Mobile touch support
+- [x] Performance optimizations (code splitting)
+- [ ] Real AI integration for grading and discussion
+- [ ] Cloud diagram saving
+- [ ] Export to Terraform/CloudFormation
 - [ ] Community features
 
 ## 📚 Tech Stack
@@ -349,9 +402,10 @@ Solutions are evaluated on four dimensions:
 **Frontend:**
 - React 18
 - TypeScript
-- React Flow (node/edge editor)
 - Vite (build tool)
 - Tailwind CSS (styling)
+- Supabase (authentication & database)
+- react-easy-crop (photo cropping)
 
 **Backend:**
 - FastAPI
@@ -359,9 +413,13 @@ Solutions are evaluated on four dimensions:
 - Pydantic (validation)
 - Pytest (testing)
 
+**Database & Auth:**
+- Supabase (PostgreSQL database, authentication, storage)
+
 **Hosting:**
-- Vercel (frontend)
-- Railway/Render (backend)
+- Cloudflare Pages / Vercel / Railway (frontend)
+- Railway / Render / Fly.io (backend)
+- Supabase Cloud (database & auth)
 
 ## 🤝 Contributing
 
@@ -372,6 +430,8 @@ Pull requests welcome! To contribute:
 3. Add tests for new functionality
 4. Update CHANGELOG.md
 5. Submit a pull request
+
+**Adding a new puzzle?** Check out [ADDING_PUZZLES.md](ADDING_PUZZLES.md) for a step-by-step guide on creating puzzles with error validation rules.
 
 ## 📝 License
 
@@ -384,6 +444,20 @@ Built by [Your Name] ([@yourhandle](https://twitter.com/yourhandle))
 - GitHub: [@yourusername](https://github.com/yourusername)
 - Twitter: [@yourhandle](https://twitter.com/yourhandle)
 - LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
+
+## 🚀 Deployment
+
+ArchLab can be deployed to various platforms. See deployment guide:
+
+- **[DEPLOYMENT_SETUP.md](./DEPLOYMENT_SETUP.md)** - Quick setup guide for Railway/Cloudflare
+
+**Recommended**: Railway (full stack) or Cloudflare Pages + Railway (separate services)
+
+**Cost**: $5-20/month depending on platform and traffic
+
+See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for pre-deployment testing checklist.
+
+**Before deploying, run**: `make check` to verify everything is ready.
 
 ## 📬 Support
 

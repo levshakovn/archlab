@@ -3,12 +3,16 @@
     {
       "id": "puzzle-static-site-cdn",
       "title": "Static Website with CDN",
-      "scenario": "Your company needs a simple marketing website with static content (HTML/CSS/JS). Users are global, and the site must be served over HTTPS with low latency. S3 objects must not be directly publicly accessible; all access should go through a CDN.",
+      "scenario": "Your company needs a simple marketing website with static content (HTML/CSS/JS). Users are global, and the site must be served over HTTPS with low latency. Objects must not be directly publicly accessible; all access should go through a CDN.",
       "requirements": [
-        "Host static content in an S3 bucket.",
+        "Host static content in an object storage bucket.",
         "Serve content through a CDN distribution.",
-        "Ensure traffic uses HTTPS.",
-        "Prevent direct public access to S3 objects (only via CDN)."
+        "Connect CDN to storage with proper origin configuration."
+      ],
+      "advice": [
+        "Consider using S3 for object storage - it's designed for static websites.",
+        "A CDN service like CloudFront can help distribute content globally and improve latency.",
+        "Connect CloudFront to S3 as its origin, and use ACM to add an SSL certificate to CloudFront for HTTPS support."
       ],
       "allowedServices": [
         "S3",
@@ -21,164 +25,1539 @@
         "WAF",
         "Shield",
         "VPC Endpoint",
-        "CloudWatch Logs"
+        "CloudWatch Logs",
+        "CloudWatch"
       ],
       "commonMistakes": [
         "Making the S3 bucket public instead of using a private bucket with CDN origin access.",
         "Skipping HTTPS or not attaching a certificate to the CDN.",
         "Pointing DNS directly to the S3 website endpoint instead of the CDN.",
         "Not restricting the CDN origin access to the S3 bucket."
-      ]
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "S3": {
+            "message": "S3 is required to host static content for the website.",
+            "error": "Missing required service: S3 bucket"
+          },
+          "CloudFront": {
+            "message": "CloudFront CDN is required to serve content globally with low latency.",
+            "error": "Missing required service: CloudFront distribution"
+          }
+        },
+        "forbiddenServices": {
+          "EC2": {
+            "message": "EC2 is not needed for a static website. Static content should be stored in S3, not on compute instances.",
+            "severity": "error"
+          },
+          "RDS": {
+            "message": "RDS is a database service and not needed for a static website with no backend.",
+            "severity": "error"
+          },
+          "Lambda": {
+            "message": "Lambda is not required for a simple static site. Consider if you need server-side processing.",
+            "severity": "warning"
+          },
+          "ECS": {
+            "message": "ECS is for containerized applications. Static sites don't need containers - use S3 instead.",
+            "severity": "error"
+          },
+          "Fargate": {
+            "message": "Fargate is for running containers. Static sites should use S3 for storage.",
+            "severity": "error"
+          },
+          "ALB": {
+            "message": "ALB is for load balancing dynamic applications. Static sites should use CloudFront CDN.",
+            "severity": "error"
+          },
+          "NLB": {
+            "message": "NLB is for load balancing dynamic applications. Static sites should use CloudFront CDN.",
+            "severity": "error"
+          }
+        },
+        "requiredConnections": [
+          {
+            "from": "CloudFront",
+            "to": "S3",
+            "message": "CloudFront must connect to S3 as its origin. Without this connection, CloudFront has no content to serve.",
+            "error": "Missing required connection: CloudFront → S3"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "S3",
+            "to": "CloudFront",
+            "message": "Connection direction is wrong. CloudFront should connect to S3 (CloudFront pulls from S3 origin), not S3 to CloudFront.",
+            "correctFlow": ["CloudFront", "S3"],
+            "severity": "error"
+          },
+          {
+            "from": "Route 53",
+            "to": "S3",
+            "message": "Don't point Route 53 directly to S3. Route 53 should point to CloudFront, which then connects to S3. This ensures all traffic goes through the CDN.",
+            "correctFlow": ["Route 53", "CloudFront", "S3"],
+            "severity": "error"
+          },
+          {
+            "from": "CloudFront",
+            "to": "Route 53",
+            "message": "CloudFront should not connect to Route 53. Route 53 is DNS and should point TO CloudFront, not the other way around.",
+            "correctFlow": ["Route 53", "CloudFront"],
+            "severity": "error"
+          }
+        ],
+        "serviceConfigErrors": {
+          "S3": [
+            {
+              "condition": "publicBucket",
+              "message": "S3 bucket should be private. All access should go through CloudFront using Origin Access Control (OAC) or Origin Access Identity (OAI). Public buckets are a security risk.",
+              "severity": "error"
+            }
+          ],
+          "CloudFront": [
+            {
+              "condition": "missingS3Origin",
+              "message": "CloudFront must have an S3 origin configured. Configure CloudFront to use your S3 bucket as the origin.",
+              "severity": "error"
+            },
+            {
+              "condition": "missingHTTPS",
+              "message": "CloudFront should use HTTPS. Attach an ACM (AWS Certificate Manager) certificate to enable HTTPS for secure access.",
+              "severity": "error"
+            }
+          ]
+        },
+        "flowValidation": {
+          "description": "User access flow should be: Route 53 (DNS) → CloudFront (CDN) → S3 (Storage)",
+          "correctFlow": ["Route 53", "CloudFront", "S3"],
+          "message": "The correct flow is: Users access via DNS (Route 53), which routes to CloudFront CDN, which fetches content from S3."
+        }
+      }
     },
     {
-      "id": "puzzle-3tier-basic",
-      "title": "Highly Available 3-Tier Web App",
-      "scenario": "Design a highly available 3-tier web application in a single AWS region. Users access the app over HTTPS via a load balancer. The web tier must be internet-facing, the application tier must not be directly reachable from the internet, and the database must be private and highly available across at least two Availability Zones.",
+      "id": "puzzle-auto-scaling",
+      "title": "Web Application Auto-Scaling and Load Balancing",
+      "scenario": "A web application experiences variable traffic throughout the day with predictable peaks. The application must scale up automatically during high traffic and scale down during low traffic to optimize costs. Compute capacity should adjust based on real-time metrics without manual intervention.",
       "requirements": [
-        "Use a load balancer to receive HTTPS traffic from the internet.",
-        "Place web/application servers in at least two Availability Zones.",
-        "Place the database in private subnets and ensure it is not publicly accessible.",
-        "Use multi-AZ or an equivalent mechanism for database high availability.",
-        "Separate public and private subnets within a VPC."
+        "Automatically scale compute capacity based on traffic patterns.",
+        "Use load balancing to distribute traffic across scaled instances.",
+        "Monitor metrics and trigger scaling actions automatically."
+      ],
+      "advice": [
+        "For automatic scaling, you'll need a service that can adjust capacity based on metrics.",
+        "Auto Scaling Groups (ASG) can scale EC2 instances automatically, while CloudWatch monitors metrics. Load balancers distribute traffic across instances.",
+        "Set up ASG to manage EC2 instances. Configure CloudWatch alarms on CPU/memory metrics. Connect ALB to ASG for load balancing. ASG scales instances up/down based on CloudWatch alarms. This creates automatic scaling based on demand."
       ],
       "allowedServices": [
-        "VPC",
-        "Subnet",
-        "Internet Gateway",
-        "NAT Gateway",
-        "Route 53",
+        "ASG",
+        "EC2",
         "ALB",
         "NLB",
-        "EC2",
-        "ASG",
-        "RDS",
-        "Aurora",
+        "CloudWatch",
+        "CloudWatch Alarms",
+        "CloudWatch Metrics",
+        "CloudWatch Logs",
+        "SNS",
+        "Lambda",
+        "VPC",
+        "Route 53",
+        "Systems Manager",
         "ElastiCache",
         "EFS",
-        "Security Group",
-        "NACL",
-        "CloudWatch",
-        "CloudWatch Logs",
-        "AWS Backup",
-        "Systems Manager",
-        "Transit Gateway",
-        "WAF"
+        "RDS"
       ],
       "commonMistakes": [
-        "Putting the database in a public subnet.",
-        "Using a single Availability Zone for app or DB while claiming high availability.",
-        "Letting EC2 instances be directly exposed to the internet instead of going through a load balancer.",
-        "Skipping NAT Gateways/instances for private subnet outbound internet access when needed."
-      ]
+        "Manually scaling instances instead of using Auto Scaling Groups.",
+        "Not setting up CloudWatch alarms to trigger scaling actions.",
+        "Scaling only up without allowing scale-down, wasting costs.",
+        "Missing load balancer to distribute traffic across scaled instances."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "ASG": {
+            "message": "Auto Scaling Groups (ASG) is required to automatically scale EC2 instances based on demand.",
+            "error": "Missing required service: ASG"
+          },
+          "ALB": {
+            "message": "A load balancer (ALB or NLB) is required to distribute traffic across scaled instances.",
+            "error": "Missing required service: Load balancer (ALB or NLB)"
+          },
+          "CloudWatch": {
+            "message": "CloudWatch is required to monitor metrics and trigger scaling actions.",
+            "error": "Missing required service: CloudWatch"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "ALB",
+            "to": "ASG",
+            "message": "The load balancer must connect to ASG to distribute traffic across scaled instances.",
+            "error": "Missing required connection: Load balancer → ASG"
+          },
+          {
+            "from": "CloudWatch",
+            "to": "ASG",
+            "message": "CloudWatch alarms must trigger ASG scaling actions based on metrics.",
+            "error": "Missing required connection: CloudWatch → ASG (for scaling)"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "ASG",
+            "to": "ALB",
+            "message": "Connection direction is wrong. ALB distributes traffic to ASG-managed EC2 instances, not ASG to ALB.",
+            "correctFlow": ["ALB", "ASG"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Auto-scaling flow should be: Traffic → ALB → ASG (EC2) with CloudWatch monitoring → ASG scales based on metrics",
+          "correctFlow": ["ALB", "ASG"],
+          "message": "The correct auto-scaling flow is: Traffic flows through ALB to ASG-managed EC2 instances. CloudWatch monitors metrics and triggers ASG to scale instances up/down based on demand."
+        }
+      }
     },
     {
-      "id": "puzzle-serverless-api",
-      "title": "Serverless REST API Backend",
-      "scenario": "A startup needs a backend for a mobile notes app. Traffic is spiky, and they want to pay only for what they use with minimal operational overhead. The API should expose CRUD operations for notes, be secure, and scale automatically without managing servers.",
+      "id": "puzzle-media-streaming",
+      "title": "Media Streaming and Video Delivery",
+      "scenario": "A video streaming platform needs to deliver video content to global users. Videos must be encoded in multiple formats and bitrates, stored securely, and streamed efficiently to users worldwide with minimal buffering and low latency.",
       "requirements": [
-        "Expose a REST API endpoint to clients.",
-        "Use serverless compute for handling requests.",
-        "Use a managed, highly available data store for notes.",
-        "Ensure the design can scale automatically with traffic.",
-        "Avoid managing or patching servers for the API layer."
+        "Store video files durably and cost-effectively.",
+        "Encode videos into multiple formats and bitrates automatically.",
+        "Distribute encoded videos globally with low latency."
+      ],
+      "advice": [
+        "For video streaming, you'll need storage, encoding, and content delivery services.",
+        "S3 can store video files, while MediaConvert can encode videos into multiple formats. CloudFront can distribute videos globally.",
+        "Store source videos in S3. Use MediaConvert to encode videos into multiple formats/bitrates when uploaded. Store encoded videos in S3. Distribute via CloudFront with signed URLs for security. This creates an efficient video streaming pipeline."
+      ],
+      "allowedServices": [
+        "S3",
+        "MediaConvert",
+        "CloudFront",
+        "MediaPackage",
+        "Lambda",
+        "SNS",
+        "SQS",
+        "KMS",
+        "IAM",
+        "Route 53",
+        "ACM",
+        "WAF",
+        "Shield",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "ElastiCache"
+      ],
+      "commonMistakes": [
+        "Storing videos unencoded, causing high bandwidth costs and poor quality.",
+        "Using EC2 for video encoding instead of managed encoding services.",
+        "Serving videos directly from S3 instead of using CDN, causing high latency.",
+        "Not securing video URLs, allowing unauthorized access and downloads."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "S3": {
+            "message": "S3 is required to store video files durably and cost-effectively.",
+            "error": "Missing required service: S3"
+          },
+          "MediaConvert": {
+            "message": "MediaConvert is required to encode videos into multiple formats and bitrates.",
+            "error": "Missing required service: MediaConvert"
+          },
+          "CloudFront": {
+            "message": "CloudFront CDN is required to distribute video content globally with low latency.",
+            "error": "Missing required service: CloudFront"
+          }
+        },
+        "forbiddenServices": {
+          "EC2": {
+            "message": "EC2 is not efficient for video encoding. Use MediaConvert for managed video encoding.",
+            "severity": "error"
+          }
+        },
+        "requiredConnections": [
+          {
+            "from": "MediaConvert",
+            "to": "S3",
+            "message": "MediaConvert must read source videos from S3 and write encoded videos back to S3.",
+            "error": "Missing required connection: MediaConvert → S3"
+          },
+          {
+            "from": "CloudFront",
+            "to": "S3",
+            "message": "CloudFront must connect to S3 to serve encoded videos to users.",
+            "error": "Missing required connection: CloudFront → S3 (for video delivery)"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "S3",
+            "to": "CloudFront",
+            "message": "Connection direction is wrong. CloudFront should connect to S3 (CloudFront pulls videos from S3), not S3 to CloudFront.",
+            "correctFlow": ["CloudFront", "S3"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Video streaming flow should be: Source Videos → S3 → MediaConvert → Encoded Videos → S3 → CloudFront → Users",
+          "correctFlow": ["S3", "MediaConvert", "CloudFront"],
+          "message": "The correct video streaming flow is: Store source videos in S3, MediaConvert encodes them into multiple formats, encoded videos stored in S3, CloudFront distributes globally to users."
+        }
+      }
+    },
+    {
+      "id": "puzzle-backup-archival",
+      "title": "Data Backup and Archival Strategy",
+      "scenario": "An organization needs automated backup and archival of critical data. Daily backups must be created automatically, retained for 90 days for quick recovery, then moved to long-term cold storage for 7 years for compliance. Recovery must be possible at any point.",
+      "requirements": [
+        "Create automated daily backups of critical data.",
+        "Retain recent backups for quick recovery access.",
+        "Automatically transition older backups to cost-effective cold storage."
+      ],
+      "advice": [
+        "For backup and archival, you'll need storage with lifecycle policies and automated transitions.",
+        "S3 can store backups with lifecycle policies to automatically move data to Glacier for cold storage. RDS automated backups provide point-in-time recovery.",
+        "Store backups in S3 with lifecycle policies. Recent backups stay in S3 Standard for 90 days. After 90 days, automatically transition to S3 Glacier Instant Retrieval, then to Glacier Deep Archive after 1 year. RDS automated backups stored in S3 enable point-in-time recovery. This creates automated backup lifecycle management."
+      ],
+      "allowedServices": [
+        "S3",
+        "S3 Glacier",
+        "S3 Glacier Deep Archive",
+        "RDS",
+        "Aurora",
+        "Backup",
+        "Lambda",
+        "EventBridge",
+        "CloudWatch",
+        "CloudWatch Events",
+        "SNS",
+        "CloudTrail",
+        "KMS",
+        "IAM",
+        "Glacier",
+        "Storage Gateway"
+      ],
+      "commonMistakes": [
+        "Storing all backups in expensive storage classes instead of using lifecycle policies.",
+        "Not automating backup creation, relying on manual processes.",
+        "Keeping all backups in the same storage class, paying high costs for old backups.",
+        "Missing automated transitions to cold storage, wasting storage costs."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "S3": {
+            "message": "S3 is required for backup storage with lifecycle policy management.",
+            "error": "Missing required service: S3"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [],
+        "wrongConnections": [],
+        "flowValidation": {
+          "description": "Backup flow should be: Source Data → RDS Automated Backups → S3 → S3 Lifecycle → Glacier (for long-term)",
+          "correctFlow": ["RDS", "S3"],
+          "message": "The correct backup flow is: RDS creates automated backups stored in S3. S3 lifecycle policies automatically transition backups from S3 Standard to Glacier for cost-effective long-term retention."
+        }
+      }
+    },
+    {
+      "id": "puzzle-monitoring-alerting",
+      "title": "Application Monitoring and Alerting System",
+      "scenario": "A critical production application needs comprehensive monitoring and alerting. The system must track application metrics, log errors, detect anomalies automatically, and send alerts to operations teams when thresholds are breached or errors occur.",
+      "requirements": [
+        "Monitor application performance metrics in real-time.",
+        "Detect threshold breaches and trigger alarms automatically.",
+        "Send alerts to operations teams via notification channels."
+      ],
+      "advice": [
+        "For monitoring and alerting, you'll need metrics collection, log aggregation, and notification services.",
+        "CloudWatch collects metrics and logs, while CloudWatch Alarms can detect threshold breaches. SNS can send alerts via email, SMS, or other channels.",
+        "Use CloudWatch to collect application metrics and logs. Set up CloudWatch Alarms on critical metrics (CPU, memory, errors). Configure SNS topics for alerting. CloudWatch Alarms trigger SNS notifications when thresholds are breached. This creates a comprehensive monitoring and alerting system."
+      ],
+      "allowedServices": [
+        "CloudWatch",
+        "CloudWatch Metrics",
+        "CloudWatch Alarms",
+        "CloudWatch Logs",
+        "CloudWatch Logs Insights",
+        "SNS",
+        "SES",
+        "Lambda",
+        "EventBridge",
+        "X-Ray",
+        "CloudTrail",
+        "Systems Manager",
+        "Parameter Store",
+        "S3",
+        "ElastiCache",
+        "RDS"
+      ],
+      "commonMistakes": [
+        "Not setting up CloudWatch alarms, missing critical alerts.",
+        "Using email-only alerting without redundancy, causing missed notifications.",
+        "Not collecting application logs centrally, making troubleshooting difficult.",
+        "Setting alarm thresholds too high or too low, causing false positives or missed alerts."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "CloudWatch": {
+            "message": "CloudWatch is required to collect metrics and logs for monitoring.",
+            "error": "Missing required service: CloudWatch"
+          },
+          "CloudWatch Alarms": {
+            "message": "CloudWatch Alarms are required to detect threshold breaches and trigger alerts.",
+            "error": "Missing required service: CloudWatch Alarms"
+          },
+          "SNS": {
+            "message": "SNS is required to send alerts to operations teams via multiple channels.",
+            "error": "Missing required service: SNS"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "CloudWatch Alarms",
+            "to": "SNS",
+            "message": "CloudWatch Alarms must trigger SNS notifications when thresholds are breached.",
+            "error": "Missing required connection: CloudWatch Alarms → SNS"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "SNS",
+            "to": "CloudWatch Alarms",
+            "message": "Connection direction is wrong. CloudWatch Alarms trigger SNS notifications, not SNS to CloudWatch.",
+            "correctFlow": ["CloudWatch Alarms", "SNS"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Monitoring flow should be: Application → CloudWatch (metrics/logs) → CloudWatch Alarms → SNS (alerts)",
+          "correctFlow": ["CloudWatch", "CloudWatch Alarms", "SNS"],
+          "message": "The correct monitoring flow is: Applications send metrics/logs to CloudWatch. CloudWatch Alarms monitor metrics and trigger SNS notifications when thresholds are breached, alerting operations teams."
+        }
+      }
+    },
+    {
+      "id": "puzzle-cicd-pipeline",
+      "title": "CI/CD Pipeline for Application Deployment",
+      "scenario": "A development team needs an automated pipeline to build, test, and deploy their application code. The pipeline should automatically trigger when code is committed, run tests, build artifacts, and deploy to compute instances without manual intervention.",
+      "requirements": [
+        "Automatically trigger pipeline when source code changes.",
+        "Build and test application code automatically.",
+        "Store build artifacts securely for deployment."
+      ],
+      "advice": [
+        "For automated deployments, you'll need a pipeline service that orchestrates build and deployment steps.",
+        "CodePipeline can orchestrate the pipeline, while CodeBuild compiles and tests code. Build artifacts can be stored in S3, and CodeDeploy can deploy to EC2 instances.",
+        "Set up CodePipeline to trigger on code commits. Connect it to CodeBuild for building/testing, store artifacts in S3, then use CodeDeploy to deploy to EC2. This creates a complete CI/CD pipeline."
+      ],
+      "allowedServices": [
+        "CodePipeline",
+        "CodeBuild",
+        "CodeDeploy",
+        "S3",
+        "EC2",
+        "ECR",
+        "Lambda",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "CodeCommit",
+        "GitHub",
+        "IAM",
+        "KMS",
+        "Systems Manager",
+        "Parameter Store",
+        "CloudFormation"
+      ],
+      "commonMistakes": [
+        "Manually deploying code instead of using an automated pipeline.",
+        "Not storing build artifacts, causing rebuilds on every deployment.",
+        "Deploying directly to production without testing in the pipeline.",
+        "Missing IAM roles for pipeline services to access other resources."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "CodePipeline": {
+            "message": "CodePipeline is required to orchestrate the CI/CD pipeline automatically.",
+            "error": "Missing required service: CodePipeline"
+          },
+          "CodeBuild": {
+            "message": "CodeBuild is required to build and test application code automatically.",
+            "error": "Missing required service: CodeBuild"
+          },
+          "S3": {
+            "message": "S3 is required to store build artifacts for deployment.",
+            "error": "Missing required service: S3 (for artifacts)"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "CodePipeline",
+            "to": "CodeBuild",
+            "message": "CodePipeline must connect to CodeBuild to build the application code.",
+            "error": "Missing required connection: CodePipeline → CodeBuild"
+          },
+          {
+            "from": "CodeBuild",
+            "to": "S3",
+            "message": "CodeBuild must store artifacts in S3 for deployment.",
+            "error": "Missing required connection: CodeBuild → S3"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "CodeBuild",
+            "to": "CodePipeline",
+            "message": "Connection direction is wrong. CodePipeline orchestrates CodeBuild, not the other way around.",
+            "correctFlow": ["CodePipeline", "CodeBuild"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Pipeline flow should be: Source → CodePipeline → CodeBuild → S3 → CodeDeploy → EC2",
+          "correctFlow": ["CodePipeline", "CodeBuild", "S3"],
+          "message": "The correct CI/CD flow is: Code commits trigger CodePipeline, which invokes CodeBuild to build/test, stores artifacts in S3, then deploys to EC2 via CodeDeploy."
+        }
+      }
+    },
+    {
+      "id": "puzzle-event-driven-microservices",
+      "title": "Event-Driven Microservices Architecture",
+      "scenario": "A company needs to build a system where multiple services need to react to business events (e.g., order placed, payment processed). Services should be loosely coupled and communicate through events rather than direct API calls.",
+      "requirements": [
+        "Publish events when business actions occur.",
+        "Allow multiple services to subscribe to events independently.",
+        "Ensure events are delivered reliably to subscribers."
+      ],
+      "advice": [
+        "For event-driven architectures, you need a central event bus that publishes and routes events to subscribers.",
+        "EventBridge can act as a central event bus, while Lambda functions can process events. SQS can queue events for processing with retry capabilities.",
+        "Use EventBridge to publish and route events. Connect EventBridge to Lambda functions or SQS queues for different subscribers. This decouples services and allows independent scaling. Use DLQ for failed events."
+      ],
+      "allowedServices": [
+        "EventBridge",
+        "SQS",
+        "SNS",
+        "Lambda",
+        "DynamoDB",
+        "Step Functions",
+        "Kinesis Data Streams",
+        "API Gateway",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "S3",
+        "DLQ",
+        "SES",
+        "SNS",
+        "CloudFormation",
+        "X-Ray"
+      ],
+      "commonMistakes": [
+        "Using direct API calls between services instead of events, creating tight coupling.",
+        "Not handling failed events, causing data loss.",
+        "Missing dead-letter queues for events that fail processing repeatedly.",
+        "Over-using SNS when a more structured event bus like EventBridge is needed."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "EventBridge": {
+            "message": "EventBridge is required as a central event bus for event-driven architecture.",
+            "error": "Missing required service: EventBridge"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "EventBridge",
+            "to": "Lambda",
+            "message": "EventBridge must connect to subscribers (Lambda or SQS) to process events.",
+            "error": "Missing required connection: EventBridge → Event Subscribers"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "Lambda",
+            "to": "EventBridge",
+            "message": "Connection direction is wrong. EventBridge routes events to Lambda, not Lambda to EventBridge.",
+            "correctFlow": ["EventBridge", "Lambda"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Event flow should be: Source → EventBridge → Subscribers (Lambda/SQS)",
+          "correctFlow": ["EventBridge", "Lambda"],
+          "message": "The correct event-driven flow is: Business events are published to EventBridge, which routes them to subscribed Lambda functions or SQS queues for processing."
+        }
+      }
+    },
+    {
+      "id": "puzzle-multi-region-disaster-recovery",
+      "title": "Multi-Region Disaster Recovery Setup",
+      "scenario": "A critical application must remain available even if an entire region fails. You need to set up an active-passive disaster recovery configuration where a primary region handles traffic normally, and a secondary region can automatically take over if the primary fails.",
+      "requirements": [
+        "Replicate data to a secondary region automatically.",
+        "Monitor health of the primary region.",
+        "Automatically route traffic to secondary region if primary fails."
+      ],
+      "advice": [
+        "For disaster recovery, you'll need data replication between regions and DNS-based failover.",
+        "RDS can replicate data to a secondary region, while Route 53 health checks can monitor the primary region and failover to secondary.",
+        "Set up RDS cross-region replication to the secondary region. Configure Route 53 health checks on the primary region and failover routing policy. When primary fails health checks, Route 53 automatically routes traffic to the secondary region. This provides automatic disaster recovery."
+      ],
+      "allowedServices": [
+        "Route 53",
+        "RDS",
+        "Aurora Global Database",
+        "EC2",
+        "ALB",
+        "CloudWatch",
+        "CloudWatch Alarms",
+        "Lambda",
+        "S3",
+        "CloudFormation",
+        "Secrets Manager",
+        "VPC",
+        "CloudFront",
+        "WAF",
+        "Shield",
+        "SNS"
+      ],
+      "commonMistakes": [
+        "Not replicating data to the secondary region, causing data loss during failover.",
+        "Using manual failover instead of automated health check-based failover.",
+        "Not testing failover procedures regularly.",
+        "Placing both regions in the same geographic area, not providing true disaster recovery."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "Route 53": {
+            "message": "Route 53 is required for DNS-based failover to the secondary region.",
+            "error": "Missing required service: Route 53"
+          },
+          "RDS": {
+            "message": "RDS with cross-region replication is required for data replication to the secondary region.",
+            "error": "Missing required service: RDS (with cross-region replication)"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "Route 53",
+            "to": "ALB",
+            "message": "Route 53 must connect to load balancers in both regions for failover.",
+            "error": "Missing required connection: Route 53 → Load Balancer"
+          }
+        ],
+        "wrongConnections": [],
+        "flowValidation": {
+          "description": "DR flow should be: Users → Route 53 → Primary ALB → EC2/RDS (with replication to Secondary)",
+          "correctFlow": ["Route 53", "ALB"],
+          "message": "The correct DR flow is: Route 53 monitors primary region health, routes traffic to primary normally, and automatically fails over to secondary region when primary is unhealthy."
+        }
+      }
+    },
+    {
+      "id": "puzzle-realtime-data-streaming",
+      "title": "Real-Time Data Streaming and Processing",
+      "scenario": "An application needs to process real-time data streams (e.g., clickstream data, sensor readings). The system must ingest high-velocity data, process it in real-time, and store results for analytics. Data processing must scale automatically with incoming data volume.",
+      "requirements": [
+        "Ingest high-velocity streaming data reliably.",
+        "Process data in real-time as it arrives.",
+        "Scale processing automatically with data volume."
+      ],
+      "advice": [
+        "For real-time streaming, you'll need a service that can ingest and buffer high-velocity data streams.",
+        "Kinesis Data Streams can ingest and buffer streams, while Lambda can process records in real-time. DynamoDB can store processed results.",
+        "Set up Kinesis Data Streams to ingest data. Connect Lambda to Kinesis to process records as they arrive. Lambda processes in batches and scales automatically. Store processed results in DynamoDB. This creates a real-time streaming pipeline."
+      ],
+      "allowedServices": [
+        "Kinesis Data Streams",
+        "Kinesis Data Firehose",
+        "Lambda",
+        "DynamoDB",
+        "S3",
+        "Redshift",
+        "Kinesis Analytics",
+        "EventBridge",
+        "SQS",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "ElastiCache",
+        "OpenSearch",
+        "MSK",
+        "Glue",
+        "Athena"
+      ],
+      "commonMistakes": [
+        "Using SQS instead of Kinesis for high-velocity streaming data, causing message loss.",
+        "Processing data synchronously instead of using stream processing, causing delays.",
+        "Not buffering data during spikes, causing overload on processing services.",
+        "Storing raw streams in expensive databases instead of using cost-effective storage."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "Kinesis Data Streams": {
+            "message": "Kinesis Data Streams is required to ingest and buffer high-velocity streaming data.",
+            "error": "Missing required service: Kinesis Data Streams"
+          },
+          "Lambda": {
+            "message": "Lambda is required to process streaming data in real-time.",
+            "error": "Missing required service: Lambda (for stream processing)"
+          }
+        },
+        "forbiddenServices": {
+          "SQS": {
+            "message": "SQS is not designed for high-velocity streaming. Use Kinesis Data Streams for real-time streaming data.",
+            "severity": "error"
+          }
+        },
+        "requiredConnections": [
+          {
+            "from": "Kinesis Data Streams",
+            "to": "Lambda",
+            "message": "Kinesis Data Streams must connect to Lambda to process records in real-time.",
+            "error": "Missing required connection: Kinesis Data Streams → Lambda"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "Lambda",
+            "to": "Kinesis Data Streams",
+            "message": "Connection direction is wrong. Kinesis Data Streams invokes Lambda, not Lambda to Kinesis.",
+            "correctFlow": ["Kinesis Data Streams", "Lambda"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Streaming flow should be: Data Source → Kinesis Data Streams → Lambda → DynamoDB/S3",
+          "correctFlow": ["Kinesis Data Streams", "Lambda"],
+          "message": "The correct streaming flow is: Data flows into Kinesis Data Streams, which invokes Lambda for real-time processing, then results are stored in DynamoDB or S3."
+        }
+      }
+    },
+    {
+      "id": "puzzle-secure-file-upload",
+      "title": "Secure File Upload and Processing",
+      "scenario": "Users need to upload sensitive files (documents, images) that must be encrypted at rest and processed securely. The system must validate files, encrypt them automatically, and trigger processing workflows while maintaining strict access controls.",
+      "requirements": [
+        "Accept file uploads securely over HTTPS.",
+        "Encrypt files at rest automatically.",
+        "Control access to files using encryption keys."
+      ],
+      "advice": [
+        "For secure file uploads, you'll need encrypted storage and access controls.",
+        "S3 can store files with server-side encryption using KMS keys. Lambda can validate files and trigger processing.",
+        "Accept uploads to S3 with bucket policies for HTTPS-only. Enable S3 server-side encryption with KMS customer-managed keys. S3 can trigger Lambda on upload for validation and processing. Use IAM policies to control KMS key access. This ensures encrypted storage with controlled access."
+      ],
+      "allowedServices": [
+        "S3",
+        "KMS",
+        "Lambda",
+        "API Gateway",
+        "IAM",
+        "CloudFront",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "SQS",
+        "SNS",
+        "Secrets Manager",
+        "CloudTrail",
+        "WAF",
+        "Shield",
+        "Cognito",
+        "Macie"
+      ],
+      "commonMistakes": [
+        "Storing files unencrypted, exposing sensitive data.",
+        "Using S3 default encryption instead of KMS customer-managed keys for granular control.",
+        "Allowing HTTP uploads instead of requiring HTTPS.",
+        "Not validating file types, allowing malicious uploads."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "S3": {
+            "message": "S3 is required to store uploaded files securely.",
+            "error": "Missing required service: S3"
+          },
+          "KMS": {
+            "message": "KMS is required for encryption key management and encrypting files at rest.",
+            "error": "Missing required service: KMS"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "S3",
+            "to": "KMS",
+            "message": "S3 must use KMS keys for server-side encryption of uploaded files.",
+            "error": "Missing required connection: S3 → KMS (for encryption)"
+          }
+        ],
+        "wrongConnections": [],
+        "flowValidation": {
+          "description": "Upload flow should be: User → API Gateway/S3 → S3 (with KMS encryption) → Lambda (processing)",
+          "correctFlow": ["S3", "KMS"],
+          "message": "The correct secure upload flow is: Files are uploaded to S3, which encrypts them using KMS keys, then Lambda processes the encrypted files based on S3 events."
+        }
+      }
+    },
+    {
+      "id": "puzzle-containerized-microservices",
+      "title": "Containerized Microservices with Service Discovery",
+      "scenario": "A company wants to migrate a monolithic application to microservices using containers. Each microservice should run independently, scale automatically, and discover other services dynamically. Services communicate via REST APIs.",
+      "requirements": [
+        "Run containerized microservices that can scale independently.",
+        "Load balance traffic across multiple instances of each service.",
+        "Enable automatic service discovery between microservices."
+      ],
+      "advice": [
+        "For containerized microservices, you'll need a container orchestration service and service discovery.",
+        "ECS or Fargate can run containers, while ALB provides load balancing. Cloud Map enables service discovery by name.",
+        "Use ECS or Fargate to run containerized microservices. Deploy an ALB in front of each service for load balancing. Configure Cloud Map for service discovery so services can find each other by name. Store container images in ECR. This creates a scalable microservices architecture."
+      ],
+      "allowedServices": [
+        "ECS",
+        "Fargate",
+        "ECR",
+        "ALB",
+        "NLB",
+        "Cloud Map",
+        "EC2",
+        "VPC",
+        "Security Group",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "X-Ray",
+        "API Gateway",
+        "Route 53",
+        "ElastiCache",
+        "RDS"
+      ],
+      "commonMistakes": [
+        "Hardcoding IP addresses for service communication instead of using service discovery.",
+        "Not load balancing across multiple instances, causing single points of failure.",
+        "Using EC2 directly instead of container orchestration, making scaling difficult.",
+        "Missing container registry, forcing manual image management."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "ECS": {
+            "message": "ECS or Fargate is required to run and orchestrate containerized microservices.",
+            "error": "Missing required service: ECS or Fargate"
+          },
+          "ALB": {
+            "message": "ALB is required to load balance traffic across multiple service instances.",
+            "error": "Missing required service: ALB"
+          },
+          "ECR": {
+            "message": "ECR is required to store and manage container images.",
+            "error": "Missing required service: ECR"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "ALB",
+            "to": "ECS",
+            "message": "ALB must connect to ECS tasks to load balance traffic across service instances.",
+            "error": "Missing required connection: ALB → ECS"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "ECS",
+            "to": "ALB",
+            "message": "Connection direction is wrong. ALB distributes traffic to ECS tasks, not ECS to ALB.",
+            "correctFlow": ["ALB", "ECS"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Microservices flow should be: Client → ALB → ECS Tasks (with Cloud Map for service discovery)",
+          "correctFlow": ["ALB", "ECS"],
+          "message": "The correct microservices flow is: Clients connect to ALB, which routes to ECS tasks. Services discover each other via Cloud Map using service names."
+        }
+      }
+    },
+    {
+      "id": "puzzle-cost-optimized-batch",
+      "title": "Cost-Optimized Batch Processing",
+      "scenario": "A company needs to run large batch jobs (data transformations, ETL) periodically. Jobs can tolerate interruption and should run at the lowest cost possible. Processing time is flexible as long as jobs complete within 24 hours.",
+      "requirements": [
+        "Run large batch jobs efficiently and cost-effectively.",
+        "Use the cheapest compute resources available.",
+        "Store job inputs and outputs reliably."
+      ],
+      "advice": [
+        "For cost-optimized batch jobs, you'll want to use the cheapest compute options available.",
+        "Batch service can manage batch jobs efficiently, while Spot Instances provide significant cost savings. S3 can store job inputs and outputs.",
+        "Use Batch to orchestrate batch jobs with Spot Instances for up to 90% cost savings. Batch handles Spot interruptions automatically by resuming on new instances. Store inputs/outputs in S3. This creates the most cost-effective batch processing solution."
+      ],
+      "allowedServices": [
+        "Batch",
+        "Spot Instances",
+        "EC2",
+        "S3",
+        "Lambda",
+        "ECS",
+        "Fargate",
+        "Glue",
+        "EMR",
+        "Step Functions",
+        "CloudWatch",
+        "CloudWatch Events",
+        "EventBridge",
+        "SQS",
+        "DynamoDB",
+        "CloudFormation"
+      ],
+      "commonMistakes": [
+        "Using On-Demand instances for batch jobs, paying 3-10x more than necessary.",
+        "Not handling Spot interruptions, causing job failures.",
+        "Storing job data in expensive storage instead of S3.",
+        "Running batch jobs during peak hours instead of scheduling for off-peak."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "Batch": {
+            "message": "Batch is required to orchestrate cost-optimized batch jobs efficiently.",
+            "error": "Missing required service: Batch"
+          },
+          "S3": {
+            "message": "S3 is required to store batch job inputs and outputs cost-effectively.",
+            "error": "Missing required service: S3"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "Batch",
+            "to": "S3",
+            "message": "Batch jobs must access S3 for inputs and outputs.",
+            "error": "Missing required connection: Batch → S3"
+          }
+        ],
+        "wrongConnections": [],
+        "flowValidation": {
+          "description": "Batch flow should be: S3 (inputs) → Batch (Spot Instances) → S3 (outputs)",
+          "correctFlow": ["Batch", "S3"],
+          "message": "The correct cost-optimized batch flow is: Batch retrieves inputs from S3, processes using Spot Instances, and stores outputs back to S3. Spot interruptions are handled automatically."
+        }
+      }
+    },
+    {
+      "id": "puzzle-iot-data-collection",
+      "title": "IoT Data Collection and Analytics",
+      "scenario": "Thousands of IoT devices (sensors, smart devices) send telemetry data continuously. The system must ingest device data reliably, process it in near real-time, and enable querying historical data for analytics. Devices connect via MQTT protocol.",
+      "requirements": [
+        "Accept MQTT connections from IoT devices securely.",
+        "Ingest high-volume telemetry data reliably.",
+        "Process and transform data in near real-time."
+      ],
+      "advice": [
+        "For IoT data collection, you'll need an MQTT broker and a data ingestion service.",
+        "IoT Core can handle MQTT connections from devices, while Kinesis can ingest the telemetry stream. Timestream or DynamoDB can store time-series data.",
+        "Use IoT Core to accept MQTT connections from devices with device certificates for security. Route device messages to Kinesis Data Streams for ingestion. Lambda processes streams, and Timestream stores time-series data for analytics. This creates a complete IoT data pipeline."
+      ],
+      "allowedServices": [
+        "IoT Core",
+        "Kinesis Data Streams",
+        "Kinesis Data Firehose",
+        "Lambda",
+        "Timestream",
+        "DynamoDB",
+        "S3",
+        "Athena",
+        "IoT Analytics",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "SQS",
+        "SNS",
+        "Iot Device Defender",
+        "IoT Device Management",
+        "EventBridge"
+      ],
+      "commonMistakes": [
+        "Using API Gateway instead of IoT Core for MQTT connections, causing connection issues.",
+        "Storing time-series IoT data in regular databases instead of time-series optimized storage.",
+        "Not handling authentication for IoT devices, creating security risks.",
+        "Processing all data in real-time instead of using appropriate storage for historical analytics."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "IoT Core": {
+            "message": "IoT Core is required to accept MQTT connections from IoT devices.",
+            "error": "Missing required service: IoT Core"
+          },
+          "Kinesis Data Streams": {
+            "message": "Kinesis Data Streams is required to ingest high-volume IoT telemetry data.",
+            "error": "Missing required service: Kinesis Data Streams"
+          }
+        },
+        "forbiddenServices": {
+          "API Gateway": {
+            "message": "API Gateway doesn't support MQTT protocol. Use IoT Core for IoT device connections.",
+            "severity": "error"
+          }
+        },
+        "requiredConnections": [
+          {
+            "from": "IoT Core",
+            "to": "Kinesis Data Streams",
+            "message": "IoT Core must route device messages to Kinesis for data ingestion.",
+            "error": "Missing required connection: IoT Core → Kinesis Data Streams"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "Kinesis Data Streams",
+            "to": "IoT Core",
+            "message": "Connection direction is wrong. IoT Core sends data to Kinesis, not Kinesis to IoT Core.",
+            "correctFlow": ["IoT Core", "Kinesis Data Streams"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "IoT flow should be: IoT Devices → IoT Core → Kinesis → Lambda → Timestream/DynamoDB",
+          "correctFlow": ["IoT Core", "Kinesis Data Streams"],
+          "message": "The correct IoT flow is: Devices connect via MQTT to IoT Core, which routes messages to Kinesis for ingestion, then Lambda processes and stores in Timestream or DynamoDB."
+        }
+      }
+    },
+    {
+      "id": "puzzle-api-gateway-authentication",
+      "title": "API Gateway with User Authentication",
+      "scenario": "A mobile application needs to call backend APIs securely. Users must authenticate before accessing APIs, and API access should be controlled based on user identity. The authentication should work across multiple API endpoints.",
+      "requirements": [
+        "Authenticate users before allowing API access.",
+        "Validate tokens on API requests automatically.",
+        "Control API access based on user identity and roles."
+      ],
+      "advice": [
+        "For API authentication, you'll need an identity service and token validation.",
+        "Cognito can handle user authentication and issue tokens, while API Gateway can validate tokens automatically.",
+        "Use Cognito for user pools to handle registration and authentication. Cognito issues JWT tokens to authenticated users. Configure API Gateway to use Cognito authorizer to validate tokens automatically. Users call API Gateway with tokens, which validates against Cognito. This provides secure API access with authentication."
       ],
       "allowedServices": [
         "API Gateway",
+        "Cognito",
         "Lambda",
         "DynamoDB",
-        "Aurora Serverless",
-        "Cognito",
-        "S3",
-        "KMS",
         "IAM",
         "CloudWatch",
         "CloudWatch Logs",
-        "SQS",
-        "SNS",
-        "Step Functions",
-        "AppSync",
-        "EventBridge",
         "WAF",
+        "Shield",
         "CloudFront",
         "Route 53",
-        "EC2"
+        "Secrets Manager",
+        "KMS",
+        "S3",
+        "SNS",
+        "SES"
       ],
       "commonMistakes": [
-        "Using EC2 instances behind a load balancer instead of Lambda for the main API.",
-        "Choosing a self-managed, single-AZ database instead of a managed service.",
-        "Not securing API endpoints (no authentication/authorization or overly permissive access).",
-        "Building a tightly coupled monolithic Lambda without clear separation of responsibilities."
-      ]
+        "Building custom authentication instead of using managed services like Cognito.",
+        "Not validating tokens on API Gateway, allowing unauthorized access.",
+        "Storing passwords in plaintext instead of using Cognito's secure password management.",
+        "Missing token expiration, creating security risks with long-lived tokens."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "API Gateway": {
+            "message": "API Gateway is required to expose APIs with authentication.",
+            "error": "Missing required service: API Gateway"
+          },
+          "Cognito": {
+            "message": "Cognito is required for user authentication and token management.",
+            "error": "Missing required service: Cognito"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "API Gateway",
+            "to": "Cognito",
+            "message": "API Gateway must use Cognito authorizer to validate user tokens.",
+            "error": "Missing required connection: API Gateway → Cognito (for authentication)"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "Cognito",
+            "to": "API Gateway",
+            "message": "Connection direction is wrong. API Gateway validates tokens with Cognito, not Cognito to API Gateway.",
+            "correctFlow": ["API Gateway", "Cognito"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Auth flow should be: User → Cognito (login) → Token → API Gateway (with Cognito authorizer) → Lambda",
+          "correctFlow": ["API Gateway", "Cognito"],
+          "message": "The correct auth flow is: Users authenticate with Cognito to get tokens, then call API Gateway with tokens. API Gateway validates tokens with Cognito authorizer before allowing API access."
+        }
+      }
     },
     {
-      "id": "puzzle-async-processing",
-      "title": "Asynchronous Image Processing Pipeline",
-      "scenario": "Users upload images that must be processed (e.g., resized, watermarked). Processing is CPU-intensive and takes several seconds. The web frontend must stay responsive and return quickly while ensuring every image is processed at least once and failures are handled.",
+      "id": "puzzle-database-migration-backup",
+      "title": "Database Migration and Backup Strategy",
+      "scenario": "A company needs to migrate an on-premises database to the cloud and set up automated backups. The migration must have minimal downtime, and backups should be automated with point-in-time recovery capability.",
       "requirements": [
-        "Decouple image upload from image processing.",
-        "Use a queue or pub/sub mechanism between the web tier and workers.",
-        "Ensure failed processing attempts are captured for later review (dead-letter behavior).",
-        "Allow the number of workers to scale independently from the front end.",
-        "Store original and processed images reliably."
+        "Migrate database from on-premises to cloud with minimal downtime.",
+        "Set up automated daily backups.",
+        "Enable point-in-time recovery for data protection."
+      ],
+      "advice": [
+        "For database migration, you'll need a migration service and automated backup capabilities.",
+        "DMS can migrate databases with minimal downtime using CDC, while RDS provides automated backups and point-in-time recovery.",
+        "Use DMS to migrate the on-premises database to RDS. DMS uses change data capture for continuous replication with minimal downtime. Enable RDS automated backups with point-in-time recovery. Store backups in S3 for long-term retention. This ensures successful migration and data protection."
       ],
       "allowedServices": [
+        "DMS",
+        "RDS",
+        "Aurora",
         "S3",
-        "S3 Event Notification",
-        "SQS",
-        "SNS",
+        "CloudWatch",
+        "CloudWatch Alarms",
         "Lambda",
+        "CloudFormation",
+        "Secrets Manager",
+        "KMS",
+        "VPC",
         "EC2",
-        "ASG",
-        "ECS",
-        "Fargate",
-        "Batch",
-        "Step Functions",
-        "EventBridge",
-        "ECR",
+        "Systems Manager",
+        "CloudTrail",
+        "Backup",
+        "EventBridge"
+      ],
+      "commonMistakes": [
+        "Using manual database exports instead of DMS, causing extended downtime.",
+        "Not enabling automated backups, risking data loss.",
+        "Disabling point-in-time recovery to save costs, reducing recovery options.",
+        "Not testing backup restoration, discovering issues only during disasters."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "DMS": {
+            "message": "DMS is required to migrate the database with minimal downtime using change data capture.",
+            "error": "Missing required service: DMS"
+          },
+          "RDS": {
+            "message": "RDS is required as the target database with automated backup capabilities.",
+            "error": "Missing required service: RDS"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "DMS",
+            "to": "RDS",
+            "message": "DMS must connect to the source database and replicate to RDS target.",
+            "error": "Missing required connection: DMS → RDS"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "RDS",
+            "to": "DMS",
+            "message": "Connection direction is wrong. DMS replicates data to RDS, not RDS to DMS.",
+            "correctFlow": ["DMS", "RDS"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Migration flow should be: On-Premises DB → DMS → RDS (with automated backups to S3)",
+          "correctFlow": ["DMS", "RDS"],
+          "message": "The correct migration flow is: DMS continuously replicates data from on-premises to RDS using CDC, enabling cutover with minimal downtime. RDS automated backups provide point-in-time recovery."
+        }
+      }
+    },
+    {
+      "id": "puzzle-search-platform",
+      "title": "Full-Text Search and Analytics Platform",
+      "scenario": "An e-commerce application needs a search platform for product catalogs. Users must be able to search products by name, description, category, and attributes with fast response times. The search must support filtering, sorting, and faceted search with real-time updates when products are added or modified.",
+      "requirements": [
+        "Enable full-text search across product data with fast query performance.",
+        "Index product data automatically when products are added or updated.",
+        "Handle high query volumes with low latency."
+      ],
+      "advice": [
+        "For full-text search, you'll need a search service that can index and query documents efficiently.",
+        "OpenSearch provides managed Elasticsearch clusters for full-text search. Lambda can index documents automatically when data changes.",
+        "Store product data in DynamoDB or RDS. Use Lambda to index products into OpenSearch when data changes. Applications query OpenSearch for search results. Configure OpenSearch with appropriate instance types for performance. This creates a scalable search platform with real-time indexing."
+      ],
+      "allowedServices": [
+        "OpenSearch",
+        "Elasticsearch",
+        "Lambda",
+        "DynamoDB",
+        "RDS",
+        "Kinesis",
+        "S3",
         "CloudWatch",
         "CloudWatch Logs",
-        "DLQ"
+        "IAM",
+        "VPC",
+        "ElastiCache",
+        "API Gateway",
+        "EventBridge",
+        "SNS",
+        "SQS"
       ],
       "commonMistakes": [
-        "Processing images synchronously in the web/API request path.",
-        "Using direct synchronous calls from the web tier to workers without a queue or event bus.",
-        "Not configuring any dead-letter handling for failed messages.",
-        "Tightly coupling processing to a single EC2 instance without any scaling mechanism."
-      ]
+        "Using RDS or DynamoDB for full-text search instead of a dedicated search service, causing slow queries.",
+        "Not indexing data automatically, causing stale search results.",
+        "Choosing wrong instance types for OpenSearch, causing performance issues or high costs.",
+        "Missing connection between data source and search service for automatic indexing."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "OpenSearch": {
+            "message": "OpenSearch is required for full-text search capabilities with fast query performance.",
+            "error": "Missing required service: OpenSearch"
+          },
+          "Lambda": {
+            "message": "Lambda is required to automatically index data into OpenSearch when products change.",
+            "error": "Missing required service: Lambda (for indexing)"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "Lambda",
+            "to": "OpenSearch",
+            "message": "Lambda must connect to OpenSearch to index documents when data changes.",
+            "error": "Missing required connection: Lambda → OpenSearch (for indexing)"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "OpenSearch",
+            "to": "Lambda",
+            "message": "Connection direction is wrong. Lambda indexes data into OpenSearch, not OpenSearch to Lambda.",
+            "correctFlow": ["Lambda", "OpenSearch"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Search flow should be: Data Source → Lambda → OpenSearch (indexing) and Users → OpenSearch (queries)",
+          "correctFlow": ["Lambda", "OpenSearch"],
+          "message": "The correct search flow is: Product data changes trigger Lambda, which indexes documents into OpenSearch. Users query OpenSearch directly for fast search results."
+        }
+      }
     },
     {
-      "id": "puzzle-data-lake-analytics",
-      "title": "Log Storage and Ad-hoc Analytics",
-      "scenario": "An application generates large volumes of log data every day. The business wants to keep 12 months of logs and run occasional ad-hoc SQL queries on this data without managing any long-running analytics clusters or databases.",
+      "id": "puzzle-ml-pipeline",
+      "title": "Machine Learning Model Training and Deployment",
+      "scenario": "A data science team needs to train machine learning models periodically with new data and deploy them for predictions. The training process must be automated, models must be versioned, and predictions must be served at scale with low latency. The system should handle model retraining when new data arrives.",
       "requirements": [
-        "Store raw log data durably and cost-effectively.",
-        "Support running ad-hoc SQL queries over the log data.",
-        "Avoid managing or patching persistent analytics servers or clusters.",
-        "Maintain a catalog or schema so queries can interpret the data.",
-        "Design for 12 months of retention with reasonable cost."
+        "Train machine learning models automatically with training data.",
+        "Store and version trained models securely.",
+        "Deploy models for real-time predictions at scale."
+      ],
+      "advice": [
+        "For ML model training and deployment, you'll need a managed ML service with training and hosting capabilities.",
+        "SageMaker provides model training, deployment, and hosting. S3 can store training data and trained models.",
+        "Store training data in S3. Use SageMaker Training to train models automatically. Store trained models in S3. Use SageMaker Endpoints to deploy models for real-time predictions. Set up automated pipelines to retrain models when new data arrives in S3. This creates a complete ML pipeline."
       ],
       "allowedServices": [
+        "SageMaker",
+        "SageMaker Training",
+        "SageMaker Endpoints",
+        "SageMaker Notebooks",
         "S3",
-        "Athena",
-        "Glue",
-        "Lake Formation",
-        "Kinesis Data Firehose",
-        "Kinesis Data Streams",
-        "EventBridge",
-        "CloudWatch Logs",
-        "CloudWatch Logs Subscription Filter",
         "Lambda",
-        "OpenSearch",
-        "Redshift Serverless",
-        "MSK"
+        "EventBridge",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "IAM",
+        "KMS",
+        "Step Functions",
+        "Glue",
+        "Athena",
+        "ECR",
+        "ECS"
       ],
       "commonMistakes": [
-        "Using a self-managed database or always-on analytics cluster instead of serverless querying.",
-        "Not partitioning or structuring data, making queries slow and expensive.",
-        "Skipping the data catalog, forcing manual schema management.",
-        "Storing logs in a high-cost transactional database instead of object storage."
-      ]
+        "Using EC2 for ML training instead of managed ML services, requiring manual infrastructure management.",
+        "Not versioning models, making it difficult to roll back to previous versions.",
+        "Deploying models directly to EC2 instead of managed endpoints, missing auto-scaling and monitoring.",
+        "Not automating retraining, causing models to become stale as new data arrives."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "SageMaker": {
+            "message": "SageMaker is required for machine learning model training and deployment.",
+            "error": "Missing required service: SageMaker"
+          },
+          "S3": {
+            "message": "S3 is required to store training data and trained models.",
+            "error": "Missing required service: S3"
+          }
+        },
+        "forbiddenServices": {
+          "EC2": {
+            "message": "EC2 requires manual ML infrastructure management. Use SageMaker for managed ML training and deployment.",
+            "severity": "warning"
+          }
+        },
+        "requiredConnections": [
+          {
+            "from": "SageMaker",
+            "to": "S3",
+            "message": "SageMaker must connect to S3 to read training data and store trained models.",
+            "error": "Missing required connection: SageMaker → S3"
+          }
+        ],
+        "wrongConnections": [],
+        "flowValidation": {
+          "description": "ML flow should be: Training Data → S3 → SageMaker Training → Model → S3 → SageMaker Endpoints → Predictions",
+          "correctFlow": ["S3", "SageMaker"],
+          "message": "The correct ML flow is: Training data stored in S3, SageMaker Training creates models, models stored in S3, SageMaker Endpoints deploy models for real-time predictions."
+        }
+      }
+    },
+    {
+      "id": "puzzle-workflow-orchestration",
+      "title": "Serverless Workflow Orchestration",
+      "scenario": "A business process requires multiple steps with conditional logic, error handling, and retries. The workflow involves calling multiple services, transforming data, and making decisions based on results. Steps must execute in order with proper error handling and state management.",
+      "requirements": [
+        "Orchestrate multi-step workflows with conditional logic.",
+        "Handle errors and retries automatically in workflows.",
+        "Maintain workflow state and execution history."
+      ],
+      "advice": [
+        "For workflow orchestration, you'll need a service that can coordinate multiple steps with state management.",
+        "Step Functions can orchestrate workflows, while Lambda functions execute individual steps. State is managed automatically.",
+        "Use Step Functions to define workflow state machines with Lambda tasks. Each Lambda function executes a workflow step. Step Functions handles retries, error handling, and state management automatically. Connect multiple Lambdas in sequence or parallel. This creates robust workflow orchestration without managing state yourself."
+      ],
+      "allowedServices": [
+        "Step Functions",
+        "Lambda",
+        "DynamoDB",
+        "S3",
+        "SQS",
+        "SNS",
+        "EventBridge",
+        "API Gateway",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "IAM",
+        "KMS",
+        "SageMaker",
+        "ECS",
+        "Batch",
+        "Glue"
+      ],
+      "commonMistakes": [
+        "Orchestrating workflows with Lambda alone, losing state on failures and requiring complex error handling.",
+        "Not using Step Functions for multi-step workflows, making state management and retries difficult.",
+        "Missing error handling in workflows, causing entire workflows to fail on single step errors.",
+        "Not maintaining workflow execution history, making debugging and auditing difficult."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "Step Functions": {
+            "message": "Step Functions is required to orchestrate multi-step workflows with state management.",
+            "error": "Missing required service: Step Functions"
+          },
+          "Lambda": {
+            "message": "Lambda is required to execute individual workflow steps.",
+            "error": "Missing required service: Lambda (for workflow steps)"
+          }
+        },
+        "forbiddenServices": {},
+        "requiredConnections": [
+          {
+            "from": "Step Functions",
+            "to": "Lambda",
+            "message": "Step Functions must invoke Lambda functions to execute workflow steps.",
+            "error": "Missing required connection: Step Functions → Lambda"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "Lambda",
+            "to": "Step Functions",
+            "message": "Connection direction is wrong. Step Functions invokes Lambda tasks, not Lambda to Step Functions.",
+            "correctFlow": ["Step Functions", "Lambda"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Workflow flow should be: Trigger → Step Functions → Lambda (Step 1) → Lambda (Step 2) → ... with state management",
+          "correctFlow": ["Step Functions", "Lambda"],
+          "message": "The correct workflow flow is: Workflow triggers Step Functions, which orchestrates Lambda functions in sequence/parallel with automatic state management, error handling, and retries."
+        }
+      }
+    },
+    {
+      "id": "puzzle-caching-strategy",
+      "title": "Database Caching and Performance Optimization",
+      "scenario": "A web application experiences slow database queries under high traffic, causing poor user experience. Database reads are repetitive and query results rarely change. The application must respond faster by caching frequently accessed data while maintaining data consistency.",
+      "requirements": [
+        "Cache frequently accessed database query results.",
+        "Improve application response times significantly.",
+        "Maintain cache consistency when data changes."
+      ],
+      "advice": [
+        "For database caching, you'll need an in-memory caching service that can store query results.",
+        "ElastiCache (Redis/Memcached) provides managed in-memory caching. Lambda can invalidate cache when data changes.",
+        "Use ElastiCache Redis or Memcached to cache database query results. Applications check cache first before querying the database. Configure cache TTL for automatic expiration. Invalidate cache entries when data changes using Lambda or application logic. This significantly improves performance and reduces database load."
+      ],
+      "allowedServices": [
+        "ElastiCache",
+        "ElastiCache Redis",
+        "ElastiCache Memcached",
+        "DynamoDB DAX",
+        "RDS",
+        "DynamoDB",
+        "Lambda",
+        "API Gateway",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "SNS",
+        "EventBridge",
+        "VPC",
+        "EC2",
+        "ALB",
+        "SQS"
+      ],
+      "commonMistakes": [
+        "Not implementing caching, causing slow responses and database overload.",
+        "Caching everything without TTL, leading to stale data and inconsistency issues.",
+        "Not invalidating cache when data changes, serving outdated information to users.",
+        "Using wrong caching service (e.g., S3) instead of in-memory cache for fast access."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "ElastiCache": {
+            "message": "ElastiCache is required for in-memory caching to improve database query performance.",
+            "error": "Missing required service: ElastiCache"
+          },
+          "RDS": {
+            "message": "A database (RDS or DynamoDB) is required as the source data store for caching.",
+            "error": "Missing required service: Database (RDS or DynamoDB)"
+          }
+        },
+        "forbiddenServices": {
+          "S3": {
+            "message": "S3 is object storage, not suitable for caching. Use ElastiCache for in-memory caching.",
+            "severity": "error"
+          }
+        },
+        "requiredConnections": [
+          {
+            "from": "ElastiCache",
+            "to": "RDS",
+            "message": "ElastiCache should be used alongside RDS for caching, though applications query both directly.",
+            "error": "Missing connection: Application should use ElastiCache before querying RDS"
+          }
+        ],
+        "wrongConnections": [],
+        "flowValidation": {
+          "description": "Caching flow should be: Application → ElastiCache (check cache) → RDS (if cache miss) → Cache result",
+          "correctFlow": ["ElastiCache", "RDS"],
+          "message": "The correct caching flow is: Applications check ElastiCache first for cached results. If cache miss, query RDS and store result in cache for future requests. This reduces database load and improves response times."
+        }
+      }
+    },
+    {
+      "id": "puzzle-data-warehouse-bi",
+      "title": "Data Warehouse and Business Intelligence",
+      "scenario": "A company needs to analyze business data from multiple sources (transactional databases, files, APIs) to generate reports and dashboards. Data must be consolidated, transformed, and stored in a format optimized for analytics queries. Business users need interactive dashboards and reports.",
+      "requirements": [
+        "Consolidate data from multiple sources into a single data warehouse.",
+        "Transform and load data into a format optimized for analytics.",
+        "Support complex analytical queries with fast performance."
+      ],
+      "advice": [
+        "For data warehousing, you'll need a columnar database optimized for analytics and ETL capabilities.",
+        "Redshift provides managed data warehouse with columnar storage. Glue can extract and transform data from sources. QuickSight can create dashboards.",
+        "Use Glue to extract and transform data from multiple sources. Load transformed data into Redshift data warehouse. Business users access QuickSight for interactive dashboards and reports. Automate ETL jobs using Glue on a schedule or EventBridge triggers. This creates a complete BI solution."
+      ],
+      "allowedServices": [
+        "Redshift",
+        "Redshift Serverless",
+        "Glue",
+        "QuickSight",
+        "S3",
+        "Lambda",
+        "DMS",
+        "Kinesis Data Firehose",
+        "EventBridge",
+        "CloudWatch",
+        "CloudWatch Logs",
+        "IAM",
+        "VPC",
+        "Secrets Manager",
+        "CloudFormation",
+        "Athena"
+      ],
+      "commonMistakes": [
+        "Using transactional databases (RDS) for analytics instead of data warehouses, causing slow query performance.",
+        "Not transforming data before loading, making analytics queries complex and slow.",
+        "Missing ETL orchestration, requiring manual data loading processes.",
+        "Not providing dashboards for business users, limiting self-service analytics."
+      ],
+      "errorRules": {
+        "requiredServices": {
+          "Redshift": {
+            "message": "Redshift is required as a data warehouse for analytics workloads.",
+            "error": "Missing required service: Redshift"
+          },
+          "Glue": {
+            "message": "Glue is required to extract, transform, and load data from sources into Redshift.",
+            "error": "Missing required service: Glue"
+          },
+          "S3": {
+            "message": "S3 is required as staging area for ETL processes and data loading.",
+            "error": "Missing required service: S3"
+          }
+        },
+        "forbiddenServices": {
+          "RDS": {
+            "message": "RDS is for transactional workloads, not analytics. Use Redshift for data warehousing.",
+            "severity": "error"
+          },
+          "DynamoDB": {
+            "message": "DynamoDB is for transactional workloads, not analytics. Use Redshift for data warehousing.",
+            "severity": "error"
+          }
+        },
+        "requiredConnections": [
+          {
+            "from": "Glue",
+            "to": "S3",
+            "message": "Glue must read source data from S3 and write transformed data to S3 for staging.",
+            "error": "Missing required connection: Glue → S3"
+          },
+          {
+            "from": "Glue",
+            "to": "Redshift",
+            "message": "Glue must load transformed data into Redshift data warehouse.",
+            "error": "Missing required connection: Glue → Redshift"
+          }
+        ],
+        "wrongConnections": [
+          {
+            "from": "Redshift",
+            "to": "Glue",
+            "message": "Connection direction is wrong. Glue loads data into Redshift, not Redshift to Glue.",
+            "correctFlow": ["Glue", "Redshift"],
+            "severity": "error"
+          }
+        ],
+        "flowValidation": {
+          "description": "Data warehouse flow should be: Source Data → S3 → Glue (ETL) → Redshift → QuickSight (dashboards)",
+          "correctFlow": ["Glue", "S3", "Redshift"],
+          "message": "The correct data warehouse flow is: Source data stored in S3, Glue extracts/transforms data, Glue loads transformed data into Redshift, QuickSight queries Redshift for dashboards and reports."
+        }
+      }
     }
   ]
 }
-

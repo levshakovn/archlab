@@ -1,12 +1,12 @@
 from fastapi.testclient import TestClient
 
-def test_health_check(client: TestClient):
+def test_health_check(client):
     """Test health endpoint"""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
 
-def test_root(client: TestClient):
+def test_root(client):
     """Test root endpoint"""
     response = client.get("/")
     assert response.status_code == 200
@@ -14,7 +14,7 @@ def test_root(client: TestClient):
     assert "message" in data
     assert data["message"] == "Welcome to ArchLab"
 
-def test_grade_endpoint(client: TestClient):
+def test_grade_endpoint(client):
     """Test grading endpoint"""
     request_data = {
         "puzzleId": "puzzle-3tier-basic",

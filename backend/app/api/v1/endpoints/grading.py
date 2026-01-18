@@ -36,7 +36,36 @@ async def grade_architecture(request: GraphJSONSchema):
     - Requirements check
     - Hard constraint violations
     - Summary feedback
+    
+    **Request Body:**
+    ```json
+    {
+      "puzzleId": "puzzle-3tier-basic",
+      "nodes": {
+        "node-0": {
+          "id": "node-0",
+          "serviceType": "ALB",
+          "label": "ALB",
+          "x": 100,
+          "y": 100
+        }
+      },
+      "edges": [
+        {"from": "node-0", "to": "node-1", "type": "connection"}
+      ]
+    }
+    ```
+    
+    **Response:**
+    Returns grading scores, requirement checks, violations, and feedback.
     """
+    # Validate puzzle ID
+    if request.puzzleId not in PUZZLE_RULES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown puzzle ID: {request.puzzleId}. Available puzzles: {list(PUZZLE_RULES.keys())}"
+        )
+    
     try:
         puzzle_rules = PUZZLE_RULES.get(request.puzzleId, {})
         result = grading_service.grade_architecture(
@@ -45,7 +74,13 @@ async def grade_architecture(request: GraphJSONSchema):
             puzzle_rules,
         )
         return GradingResultSchema(**result)
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        logger.error(f"Grading failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Grading failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while grading your architecture. Please try again."
+        )
 

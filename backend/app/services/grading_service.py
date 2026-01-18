@@ -1,7 +1,7 @@
 """Grading service for architecture evaluation"""
 import logging
 from typing import Dict, List
-from app.schemas.graph import GraphJSONSchema, NodeSchema
+from app.schemas.graph import GraphJSONSchema
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,8 @@ class GradingService:
             has_athena = "Athena" in services
             correctness = 8 if (has_s3 and has_athena) else 4
         
-        total = (correctness * 0.4 + reliability * 0.2 + security * 0.2 + cost * 0.2) / 10
+        # Calculate weighted average (weights sum to 1.0, so result is already 0-10 scale)
+        total = correctness * 0.4 + reliability * 0.2 + security * 0.2 + cost * 0.2
         
         return {
             "correctness": round(correctness),
