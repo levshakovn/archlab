@@ -26,11 +26,13 @@ app.add_middleware(
 # Include routers
 app.include_router(endpoints.grading.router, prefix="/api/v1", tags=["grading"])
 
+
 # Health check
 @app.get("/health")
 def health_check():
     """Check API health"""
     return {"status": "healthy", "version": "0.1.0"}
+
 
 # Root endpoint
 @app.get("/")
@@ -41,4 +43,3 @@ def root():
         "docs": "/docs",
         "health": "/health",
     }
-
