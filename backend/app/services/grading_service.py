@@ -68,26 +68,26 @@ class GradingService:
             has_compute = any(s in ["EC2", "ASG"] for s in services)
             has_db = any(s in ["RDS", "Aurora", "DynamoDB"] for s in services)
 
-            correctness = 9 if (has_lb and has_compute and has_db) else 5
+            correctness = 9 if has_lb and has_compute and has_db else 5
             reliability = 8 if edge_count > 2 else 5
         elif puzzle_id == "puzzle-static-site-cdn":
             has_s3 = "S3" in services
             has_cf = "CloudFront" in services
-            correctness = 9 if (has_s3 and has_cf) else 5
+            correctness = 9 if has_s3 and has_cf else 5
             reliability = 9 if has_cf else 5
         elif puzzle_id == "puzzle-serverless-api":
             has_lambda = "Lambda" in services
             has_api_gw = "API Gateway" in services
             has_db = any(s in ["DynamoDB", "Aurora Serverless"] for s in services)
-            correctness = 9 if (has_lambda and has_api_gw and has_db) else 5
+            correctness = 9 if has_lambda and has_api_gw and has_db else 5
         elif puzzle_id == "puzzle-async-processing":
             has_s3 = "S3" in services
             has_queue = any(s in ["SQS", "SNS"] for s in services)
-            correctness = 8 if (has_s3 and has_queue) else 4
+            correctness = 8 if has_s3 and has_queue else 4
         elif puzzle_id == "puzzle-data-lake-analytics":
             has_s3 = "S3" in services
             has_athena = "Athena" in services
-            correctness = 8 if (has_s3 and has_athena) else 4
+            correctness = 8 if has_s3 and has_athena else 4
 
         # Calculate weighted average (weights sum to 1.0, so result is already 0-10 scale)
         total = correctness * 0.4 + reliability * 0.2 + security * 0.2 + cost * 0.2
