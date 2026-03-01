@@ -1,0 +1,11 @@
+# Development dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Include production requirements
+-r requirements.txt
+
+# Code quality tools
+flake8==6.1.0
+black==23.12.1
+isort==5.13.2
+

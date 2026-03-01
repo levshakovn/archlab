@@ -1,0 +1,36 @@
+# robots.txt for ArchLab - AWS Architecture Practice Tool
+# https://www.robotstxt.org/robotstxt.html
+# For more information, see: https://developers.google.com/search/docs/crawling-indexing/robots/robots_txt
+
+# Allow all search engines to crawl the site
+User-agent: *
+Allow: /
+
+# Disallow sensitive or non-public endpoints
+Disallow: /api/
+Disallow: /admin/
+Disallow: /test-supabase
+Disallow: /auth/callback
+Disallow: /reset-password
+
+# Allow important public pages
+Allow: /
+Allow: /workspace
+Allow: /profile
+
+# Specific rules for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Block bad bots (optional - add known bad bot user agents if needed)
+# User-agent: BadBot
+# Disallow: /
+
+# Sitemap location (update with your actual production domain)
+# Example: Sitemap: https://archlab.example.com/sitemap.xml
+Sitemap: https://archlab.example.com/sitemap.xml

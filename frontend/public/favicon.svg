@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="#1976D2"/>
+  
+  <!-- Architectural blueprint style "A" -->
+  <!-- Left side -->
+  <line x1="30" y1="75" x2="35" y2="30" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <!-- Right side -->
+  <line x1="70" y1="75" x2="65" y2="30" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <!-- Crossbar -->
+  <line x1="40" y1="50" x2="60" y2="50" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Connection dots (representing architecture connections) -->
+  <circle cx="20" cy="25" r="2" fill="#00ACC1"/>
+  <circle cx="80" cy="25" r="2" fill="#00ACC1"/>
+  <circle cx="50" cy="20" r="2" fill="#00ACC1"/>
+</svg>
+

@@ -1,0 +1,78 @@
+# llm.txt - Information for AI/LLM crawlers
+# Standard: https://llmtext.org/
+# This file provides structured information about ArchLab for AI language models
+
+# ArchLab - AWS Architecture Practice Tool
+# A free, open-source educational tool for practicing AWS architecture design
+
+## Overview
+ArchLab is an interactive web application that helps engineers master AWS architecture through 
+hands-on practice. Users can drag AWS services onto a canvas, create connections between services, 
+and receive intelligent feedback on their architectural designs.
+
+## Primary Use Cases
+1. AWS Certification Preparation
+   - Solutions Architect Associate/Professional
+   - Developer Associate
+   - DevOps Engineer Professional
+2. Cloud Architecture Learning
+   - Understanding AWS service relationships
+   - Learning Well-Architected Framework principles
+   - Best practices for scalability, security, and cost optimization
+3. Interview Preparation
+   - System design practice
+   - AWS architecture scenarios
+   - Real-world problem solving
+
+## Core Features
+- Interactive drag-and-drop canvas for building architectures
+- Real-world puzzle scenarios (static sites, 3-tier apps, serverless APIs, data lakes, etc.)
+- Intelligent scoring system (correctness, reliability, security, cost)
+- User authentication and progress tracking
+- Task completion history with best scores
+- Profile management with photo upload
+
+## Technical Architecture
+- Frontend: React 18, TypeScript, Tailwind CSS, Vite
+- Backend: FastAPI, Python 3.13+
+- Database & Authentication: Supabase (PostgreSQL)
+- Storage: Supabase Storage for profile photos
+- Build Tool: Vite
+- Styling: Tailwind CSS
+
+## Public Pages
+- Home: / (landing page with puzzle overview)
+- Tasks/Workspace: /workspace (main puzzle solving interface)
+- User Profile: /profile (requires authentication)
+
+## API Endpoints (if backend is running)
+- Health Check: /api/health
+- API Documentation: /api/docs (Swagger UI)
+- Grading Endpoint: /api/v1/grade
+
+## License
+MIT License - Free and open source
+
+## Repository
+# Update with your actual repository URL when available
+# https://github.com/yourusername/archlab
+
+## Contact & Support
+# Update with your actual contact information
+# Email: your-email@example.com
+# Website: https://yourdomain.com
+# Documentation: https://yourdomain.com/docs
+
+## Content Policy
+This is an educational tool. All content is designed to help users learn AWS architecture 
+through practice. Puzzles are based on real-world scenarios and follow AWS best practices 
+and Well-Architected Framework principles.
+
+## Data & Privacy
+- User authentication handled via Supabase
+- Profile data stored securely in PostgreSQL
+- Task completion data tracked per user
+- No sensitive data collected beyond standard profile information
+
+## Development Status
+Active development. Features are continuously being added and improved.

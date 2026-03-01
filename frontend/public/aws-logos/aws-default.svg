@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <title>AWS Default Logo</title>
+  <g id="AWS-Default">
+    <!-- AWS Orange Arrow -->
+    <path d="M24,8 L32,16 L28,16 L28,28 L20,28 L20,16 L16,16 Z" fill="#FF9900" fill-rule="evenodd"/>
+    <!-- AWS Text Background -->
+    <rect x="8" y="32" width="32" height="8" rx="2" fill="#232F3E"/>
+    <!-- Simple AWS text representation -->
+    <text x="24" y="38" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#FFFFFF" text-anchor="middle">AWS</text>
+  </g>
+</svg>
