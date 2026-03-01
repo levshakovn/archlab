@@ -17,6 +17,11 @@
 - **[PUZZLE_ERROR_STRUCTURE.md](./PUZZLE_ERROR_STRUCTURE.md)** - Developer documentation for puzzle error structure
 - **[AWS_LOGOS_SETUP.md](./AWS_LOGOS_SETUP.md)** - Guide for adding AWS service logos
 
+### Project Planning
+- **[PROJECT_ROADMAP.md](./PROJECT_ROADMAP.md)** - Comprehensive project roadmap with all planned features
+- **[ROADMAP_QUICK_REFERENCE.md](./ROADMAP_QUICK_REFERENCE.md)** - Quick checklist of features to implement
+- **[GOOGLE_OAUTH_IMPLEMENTATION_PLAN.md](./GOOGLE_OAUTH_IMPLEMENTATION_PLAN.md)** - Detailed plan for Google OAuth implementation
+
 ### Database Setup
 - **[database/README.md](./database/README.md)** - Database setup instructions for Supabase
 

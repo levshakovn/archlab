@@ -46,39 +46,3 @@ export async function uploadProfilePhoto(userId: string, file: File): Promise<st
   return data.publicUrl
 }
 
-/**
- * Delete a user's profile photo
- * @param userId - The user's ID
- */
-export async function deleteProfilePhoto(userId: string): Promise<void> {
-  const supabase = getSupabaseClient()
-
-  // Try to find and delete the photo (we don't know the exact extension)
-  // List files in the bucket root
-  const { data: files, error: listError } = await supabase.storage
-    .from('profile-photos')
-    .list('', {
-      limit: 100,
-      offset: 0,
-    })
-
-  if (listError) {
-    // If bucket doesn't exist or other error, just return (photo might not exist)
-    return
-  }
-
-  // Find files that start with userId
-  if (files && files.length > 0) {
-    const userFiles = files.filter(file => file.name.startsWith(`${userId}.`))
-    if (userFiles.length > 0) {
-      const filePaths = userFiles.map(file => file.name)
-      const { error: deleteError } = await supabase.storage
-        .from('profile-photos')
-        .remove(filePaths)
-
-      if (deleteError) {
-        console.warn('Error deleting profile photo:', deleteError)
-      }
-    }
-  }
-}

@@ -16,7 +16,7 @@ function getStorageKey(puzzleId: string | null): string | null {
 function loadCanvasState(puzzleId: string | null): SavedCanvasState | null {
   const key = getStorageKey(puzzleId)
   if (!key) return null
-  
+
   try {
     const saved = localStorage.getItem(key)
     if (saved) {
@@ -31,7 +31,7 @@ function loadCanvasState(puzzleId: string | null): SavedCanvasState | null {
 function saveCanvasState(puzzleId: string | null, state: SavedCanvasState): void {
   const key = getStorageKey(puzzleId)
   if (!key) return
-  
+
   try {
     localStorage.setItem(key, JSON.stringify(state))
   } catch (error) {
@@ -42,7 +42,7 @@ function saveCanvasState(puzzleId: string | null, state: SavedCanvasState): void
 function clearCanvasState(puzzleId: string | null): void {
   const key = getStorageKey(puzzleId)
   if (!key) return
-  
+
   try {
     localStorage.removeItem(key)
   } catch (error) {
@@ -56,19 +56,19 @@ export function useCanvas(puzzleId: string | null = null) {
   const [nodeIdCounter, setNodeIdCounter] = useState(0)
   const nodesRef = useRef(nodes)
   const previousPuzzleIdRef = useRef<string | null>(null)
-  
+
   // Undo/Redo history
   const [history, setHistory] = useState<SavedCanvasState[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const MAX_HISTORY = 50 // Limit history size
-  
+
   // Helper to create a state snapshot
   const createSnapshot = useCallback((): SavedCanvasState => ({
     nodes: { ...nodes },
     edges: [...edges],
     nodeIdCounter,
   }), [nodes, edges, nodeIdCounter])
-  
+
   // Helper to save current state to history
   const saveToHistory = useCallback(() => {
     const snapshot = createSnapshot()
@@ -83,14 +83,14 @@ export function useCanvas(puzzleId: string | null = null) {
     })
     setHistoryIndex((prev) => Math.min(prev + 1, MAX_HISTORY - 1))
   }, [createSnapshot, historyIndex])
-  
+
   // Apply state from snapshot
   const applySnapshot = useCallback((snapshot: SavedCanvasState) => {
     setNodes(snapshot.nodes)
     setEdges(snapshot.edges)
     setNodeIdCounter(snapshot.nodeIdCounter)
   }, [])
-  
+
   // Load saved state when puzzleId changes
   useEffect(() => {
     if (puzzleId && puzzleId !== previousPuzzleIdRef.current) {
@@ -119,21 +119,24 @@ export function useCanvas(puzzleId: string | null = null) {
       previousPuzzleIdRef.current = null
     }
   }, [puzzleId])
-  
+
   // Keep ref in sync with state
   useEffect(() => {
     nodesRef.current = nodes
   }, [nodes])
-  
+
   // Save state to localStorage whenever nodes, edges, or nodeIdCounter changes
   useEffect(() => {
-    if (puzzleId && (Object.keys(nodes).length > 0 || edges.length > 0)) {
-      saveCanvasState(puzzleId, {
-        nodes,
-        edges,
-        nodeIdCounter,
-      })
-    }
+    const saveTimeout = setTimeout(() => {
+      if (puzzleId && (Object.keys(nodes).length > 0 || edges.length > 0)) {
+        saveCanvasState(puzzleId, {
+          nodes,
+          edges,
+          nodeIdCounter,
+        })
+      }
+    }, 500)
+    return () => clearTimeout(saveTimeout)
   }, [puzzleId, nodes, edges, nodeIdCounter])
 
   const addNode = useCallback((serviceType: string, x: number, y: number) => {
@@ -180,12 +183,12 @@ export function useCanvas(puzzleId: string | null = null) {
 
   const addEdge = useCallback((from: string, to: string) => {
     if (from === to) return
-    
+
     // Check if both nodes exist using ref (always current)
     if (!nodesRef.current[from] || !nodesRef.current[to]) {
       return
     }
-    
+
     saveToHistory()
     setEdges((prev) => {
       // Prevent duplicate edges
@@ -206,7 +209,7 @@ export function useCanvas(puzzleId: string | null = null) {
     setNodeIdCounter(0)
     clearCanvasState(puzzleId)
   }, [puzzleId, saveToHistory])
-  
+
   // Undo/Redo functions
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -215,7 +218,7 @@ export function useCanvas(puzzleId: string | null = null) {
       setHistoryIndex((prev) => prev - 1)
     }
   }, [history, historyIndex, applySnapshot])
-  
+
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const nextState = history[historyIndex + 1]
@@ -223,7 +226,7 @@ export function useCanvas(puzzleId: string | null = null) {
       setHistoryIndex((prev) => prev + 1)
     }
   }, [history, historyIndex, applySnapshot])
-  
+
   const canUndo = historyIndex > 0
   const canRedo = historyIndex < history.length - 1
 

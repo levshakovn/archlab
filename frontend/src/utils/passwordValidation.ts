@@ -47,15 +47,3 @@ export function validatePassword(password: string): PasswordValidationResult {
   }
 }
 
-/**
- * Get password requirements as a formatted string
- */
-export function getPasswordRequirements(): string[] {
-  return [
-    'At least 8 characters',
-    'One lowercase letter',
-    'One uppercase letter',
-    'One digit',
-    'One symbol (!@#$%^&* etc.)',
-  ]
-}

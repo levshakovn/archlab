@@ -47,6 +47,12 @@ export interface ErrorRules {
   flowValidation?: FlowValidation
 }
 
+export interface PuzzleTags {
+  certification: string[]
+  category: string[]
+  services?: string[]
+}
+
 export interface Puzzle {
   id: string
   title: string
@@ -54,6 +60,7 @@ export interface Puzzle {
   requirements: string[]
   allowedServices: string[]
   commonMistakes: string[]
+  tags: PuzzleTags
   advice?: string[] // Optional advice/hints for each puzzle (sorted from least to most helpful)
   errorRules?: ErrorRules
 }

@@ -31,6 +31,9 @@ help:
 	@echo "  make format               Format backend code (black + isort)"
 	@echo "  make format-check         Check backend formatting without changes"
 	@echo ""
+	@echo "Security:"
+	@echo "  make security-audit        Run security audit (npm audit + pip-audit)"
+	@echo ""
 	@echo "Build:"
 	@echo "  make build                Build frontend for production"
 	@echo ""
@@ -264,6 +267,17 @@ pre-deployment:
 		./scripts/pre-deployment-check.sh; \
 	else \
 		echo "❌ Pre-deployment check script not found"; \
+		exit 1; \
+	fi
+
+# Security audit
+security-audit:
+	@echo "🔒 Running security audit..."
+	@if [ -f "scripts/security-audit.sh" ]; then \
+		chmod +x scripts/security-audit.sh && \
+		./scripts/security-audit.sh; \
+	else \
+		echo "❌ Security audit script not found"; \
 		exit 1; \
 	fi
 

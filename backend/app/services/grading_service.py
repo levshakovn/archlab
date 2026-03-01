@@ -1,6 +1,7 @@
 """Grading service for architecture evaluation"""
 import logging
 from typing import Dict, List
+
 from app.schemas.graph import GraphJSONSchema
 
 logger = logging.getLogger(__name__)
@@ -10,9 +11,7 @@ class GradingService:
     """Service for grading AWS architectures"""
 
     @staticmethod
-    def grade_architecture(
-        puzzle_id: str, graph: GraphJSONSchema, puzzle_rules: Dict
-    ) -> Dict:
+    def grade_architecture(puzzle_id: str, graph: GraphJSONSchema, puzzle_rules: Dict) -> Dict:
         """
         Grade a user's architecture
 
@@ -34,9 +33,7 @@ class GradingService:
         scores = GradingService._score_dimensions(puzzle_id, services, edge_count)
 
         # Check requirements
-        requirements = GradingService._check_requirements(
-            puzzle_rules.get("requirements", []), services, edge_count
-        )
+        requirements = GradingService._check_requirements(puzzle_rules.get("requirements", []), services, edge_count)
 
         # Check constraints
         violations = GradingService._check_constraints(puzzle_id, services, graph)
@@ -101,20 +98,14 @@ class GradingService:
         }
 
     @staticmethod
-    def _check_requirements(
-        requirements: List[str], services: List[str], edge_count: int
-    ) -> List[Dict]:
+    def _check_requirements(requirements: List[str], services: List[str], edge_count: int) -> List[Dict]:
         """Check which requirements are met"""
         result = []
         service_count = len(services)
 
         for i, req in enumerate(requirements):
             met = i < min(service_count - 1, len(requirements))
-            comment = (
-                "Architecture addresses this"
-                if met
-                else "Add more services to address this"
-            )
+            comment = "Architecture addresses this" if met else "Add more services to address this"
 
             result.append(
                 {
@@ -127,9 +118,7 @@ class GradingService:
         return result
 
     @staticmethod
-    def _check_constraints(
-        puzzle_id: str, services: List[str], graph: GraphJSONSchema
-    ) -> List[str]:
+    def _check_constraints(puzzle_id: str, services: List[str], graph: GraphJSONSchema) -> List[str]:
         """Check hard constraints"""
         violations = []
 
@@ -144,9 +133,7 @@ class GradingService:
         return violations
 
     @staticmethod
-    def _generate_feedback(
-        puzzle_id: str, services: List[str], violations: List[str]
-    ) -> str:
+    def _generate_feedback(puzzle_id: str, services: List[str], violations: List[str]) -> str:
         """Generate human-friendly feedback"""
         if violations:
             return f"Good attempt! But you're missing: {', '.join(violations)}. Consider adding these components."

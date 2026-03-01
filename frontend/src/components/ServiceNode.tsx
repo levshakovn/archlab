@@ -1,5 +1,6 @@
 import { useState, memo } from 'react'
 import { getServiceLogoPath, normalizeServiceName } from '../utils/serviceLogo'
+import { LazyImage } from './LazyImage'
 
 interface Props {
   serviceType: string
@@ -29,7 +30,7 @@ function formatServiceNameForDisplay(serviceType: string): string {
 
 export const ServiceNode = memo(function ServiceNode({ serviceType, className = '', variant = 'horizontal' }: Props) {
   const [, setLogoError] = useState(false)
-  const [logoLoaded, setLogoLoaded] = useState(false)
+  const [, setLogoLoaded] = useState(false)
   const [useDefaultLogo, setUseDefaultLogo] = useState(false)
   
   const normalizedName = normalizeServiceName(serviceType)
@@ -44,12 +45,11 @@ export const ServiceNode = memo(function ServiceNode({ serviceType, className = 
     <div className={`flex ${isVertical ? 'flex-col items-center justify-center' : 'flex-row items-center'} justify-center ${isVertical ? 'gap-3' : 'gap-2'} ${className}`}>
       {/* Logo container - always takes up space to maintain consistent box size */}
       <div className={`${logoSize} flex-shrink-0 flex items-center justify-center`}>
-        <img
+        <LazyImage
           src={currentLogoPath}
           alt={`${serviceType} AWS service logo`}
-          className={`${logoSize} object-contain transition-opacity ${
-            logoLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`${logoSize} object-contain`}
+          loading={variant === 'vertical' ? 'lazy' : 'eager'} // Eager load for sidebar, lazy for canvas
           onLoad={() => setLogoLoaded(true)}
           onError={() => {
             if (!useDefaultLogo) {

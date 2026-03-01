@@ -1,4 +1,4 @@
 """API endpoints"""
-from . import grading
+from . import ai, grading
 
-__all__ = ["grading"]
+__all__ = ["grading", "ai"]

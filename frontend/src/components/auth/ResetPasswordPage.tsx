@@ -71,7 +71,7 @@ export function ResetPasswordPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white">
+      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-950 dark:via-slate-900/40 dark:to-slate-950">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
@@ -85,7 +85,7 @@ export function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white">
+      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-950 dark:via-slate-900/40 dark:to-slate-950">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="bg-white rounded-xl max-w-md w-full shadow-2xl border-4 border-success/20 p-8 text-center">
@@ -108,7 +108,7 @@ export function ResetPasswordPage() {
 
   if (error && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white">
+      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-950 dark:via-slate-900/40 dark:to-slate-950">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-6 py-12">
           <div className="bg-white rounded-xl max-w-md w-full shadow-2xl border-4 border-error/20 p-8 text-center">
@@ -128,7 +128,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-950 dark:via-slate-900/40 dark:to-slate-950">
       <Header />
       <div className="flex items-center justify-center min-h-[60vh] px-6 py-12">
         <div className="bg-white rounded-xl max-w-md w-full shadow-2xl border-4 border-primary/20 p-8">

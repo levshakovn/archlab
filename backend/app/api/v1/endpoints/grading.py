@@ -2,8 +2,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.graph import GraphJSONSchema
 from app.schemas.grading import GradingResultSchema
+from app.schemas.graph import GraphJSONSchema
 from app.services.grading_service import grading_service
 
 logger = logging.getLogger(__name__)

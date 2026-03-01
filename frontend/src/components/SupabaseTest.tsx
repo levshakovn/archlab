@@ -43,7 +43,7 @@ export function SupabaseTest() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white p-6">
+    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-950 dark:via-slate-900/40 dark:to-slate-950 p-6">
       <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg border border-gray-200">
       <h2 className="text-2xl font-bold text-text-primary mb-4">Supabase Connection Test</h2>
       

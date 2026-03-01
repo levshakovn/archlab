@@ -4,6 +4,24 @@
 
 Use this guide to thoroughly test ArchLab before deployment.
 
+## 🤖 Automated Tests
+
+Run automated checks before manual testing:
+
+```bash
+./scripts/run-tests.sh
+```
+
+This includes frontend type checks, linting, production build, and backend pytest coverage (including grading service tests).
+
+### End-to-End (Playwright)
+
+```bash
+cd frontend
+npm run test:e2e:install
+npm run test:e2e
+```
+
 ---
 
 ## ✅ Core Functionality Testing

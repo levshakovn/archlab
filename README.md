@@ -103,11 +103,25 @@ ArchLab uses Supabase for user authentication, profile management, and task comp
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key-here
    ```
-5. **Set up the database**:
+5. **Enable Google OAuth (optional but recommended)**:
+   - In Supabase Dashboard: Authentication → Providers → Google → Enable
+   - Add your Google OAuth Client ID and Client Secret
+   - Add authorized redirect URLs in Google Cloud Console:
+     - `https://your-project-id.supabase.co/auth/v1/callback`
+     - `http://localhost:5173/auth/callback`
+     - `http://localhost:3000/auth/callback`
+     - `https://yourdomain.com/auth/callback`
+   - No additional environment variables are required for Google OAuth
+6. **Set up the database**:
    - Run `database/setup.sql` in Supabase SQL Editor (creates profiles table)
    - Run `database/storage_setup.sql` in Supabase SQL Editor (creates storage bucket policies)
    - Create a storage bucket named `profile-photos` in Supabase Dashboard
    - Run `database/puzzle_completions_setup.sql` in Supabase SQL Editor (creates completions table)
+
+7. **Configure AI Discussion (Optional)**:
+   - Get an OpenAI API key from [platform.openai.com](https://platform.openai.com/api-keys)
+   - Add `OPENAI_API_KEY=sk-your-key-here` to `backend/.env` file
+   - See [AI_SETUP.md](AI_SETUP.md) for detailed instructions
 
 See [database/README.md](database/README.md) for detailed setup instructions.
 

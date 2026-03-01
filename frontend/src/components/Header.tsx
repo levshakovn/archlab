@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../contexts/ThemeContext'
 import { UserAvatar } from './UserAvatar'
 import { LoginModal } from './auth/LoginModal'
 import { SignUpModal } from './auth/SignUpModal'
@@ -11,6 +12,7 @@ export function Header() {
   const location = useLocation()
   const currentPath = location.pathname
   const { user, loading } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showSignUpModal, setShowSignUpModal] = useState(false)
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false)
@@ -18,7 +20,8 @@ export function Header() {
   // Navigation items
   const navItems = [
     { path: '/', label: 'Home' },
-    { path: '/workspace', label: 'Tasks' },
+    { path: '/workspace', label: 'Workspace' },
+    { path: '/puzzles', label: 'Puzzles' },
   ]
 
   const handleProfileClick = () => {
@@ -53,6 +56,7 @@ export function Header() {
           <Link
             to="/"
             className="flex items-center gap-3 hover:opacity-90 transition-opacity"
+            aria-label="ArchLab home"
           >
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
               <span className="text-2xl">🏗️</span>
@@ -64,7 +68,7 @@ export function Header() {
           </Link>
 
           {/* Center: Navigation Links */}
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1" aria-label="Main navigation">
             {navItems.map((item) => {
               const isActive = currentPath === item.path
               return (
@@ -76,6 +80,7 @@ export function Header() {
                       ? 'bg-white/30 text-white border-b-2 border-white'
                       : 'text-white/90 hover:bg-white/20 hover:text-white border-b-2 border-transparent'
                   }`}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   {item.label}
                 </Link>
@@ -85,6 +90,14 @@ export function Header() {
 
           {/* Right: User Section */}
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="px-3 py-2 rounded-lg text-white/90 hover:bg-white/20 hover:text-white border-b-2 border-transparent transition-colors duration-200"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? '🌞' : '🌙'}
+            </button>
             {loading ? (
               <div className="px-4 py-2 text-white/70">Loading...</div>
             ) : user ? (
@@ -95,6 +108,8 @@ export function Header() {
                     ? 'bg-white/30 text-white border-b-2 border-white'
                     : 'text-white/90 hover:bg-white/20 hover:text-white border-b-2 border-transparent'
                 }`}
+                aria-label="View profile"
+                aria-current={currentPath === '/profile' ? 'page' : undefined}
               >
                 <UserAvatar />
                 <span>Profile</span>
@@ -103,6 +118,7 @@ export function Header() {
               <button
                 onClick={handleProfileClick}
                 className="px-6 py-2 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition-colors backdrop-blur-sm border border-white/30"
+                aria-label="Sign in to ArchLab"
               >
                 Sign In
               </button>

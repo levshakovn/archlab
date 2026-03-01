@@ -52,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50/30 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full p-8 shadow-2xl border-4 border-error/20">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 bg-error/20 rounded-full flex items-center justify-center">

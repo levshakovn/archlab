@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+import re
 from typing import Dict, List
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class NodeSchema(BaseModel):
@@ -8,21 +10,35 @@ class NodeSchema(BaseModel):
     id: str
     serviceType: str
     label: str
-    x: int = Field(ge=0, description="X coordinate must be non-negative")
-    y: int = Field(ge=0, description="Y coordinate must be non-negative")
+    x: int = Field(ge=0, le=100000, description="X coordinate must be between 0 and 100000")
+    y: int = Field(ge=0, le=100000, description="Y coordinate must be between 0 and 100000")
 
     @field_validator("serviceType", "label")
     @classmethod
     def validate_not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError("Service type and label cannot be empty")
-        return v.strip()
+        # Sanitize input - remove potential XSS
+        sanitized = v.strip()
+        # Remove script tags and dangerous characters
+        sanitized = re.sub(r"<script[^>]*>.*?</script>", "", sanitized, flags=re.IGNORECASE | re.DOTALL)
+        sanitized = re.sub(r"javascript:", "", sanitized, flags=re.IGNORECASE)
+        # Limit length to prevent DoS
+        if len(sanitized) > 200:
+            raise ValueError("Service type and label must be 200 characters or less")
+        return sanitized
 
     @field_validator("id")
     @classmethod
     def validate_id_format(cls, v):
         if not v or not v.startswith("node-"):
             raise ValueError('Node ID must start with "node-"')
+        # Validate ID format to prevent injection
+        if not re.match(r"^node-\d+$", v):
+            raise ValueError('Node ID must be in format "node-{number}"')
+        # Limit length
+        if len(v) > 50:
+            raise ValueError("Node ID must be 50 characters or less")
         return v
 
 
@@ -61,7 +77,22 @@ class GraphJSONSchema(BaseModel):
     def validate_puzzle_id(cls, v):
         if not v or not v.startswith("puzzle-"):
             raise ValueError('Puzzle ID must start with "puzzle-"')
+        # Validate puzzle ID format
+        if not re.match(r"^puzzle-[a-z0-9-]+$", v):
+            raise ValueError("Puzzle ID contains invalid characters")
+        # Limit length
+        if len(v) > 100:
+            raise ValueError("Puzzle ID must be 100 characters or less")
         return v
+
+    @model_validator(mode="after")
+    def validate_graph_size(self):
+        # Prevent DoS attacks with extremely large graphs
+        if len(self.nodes) > 1000:
+            raise ValueError("Graph cannot contain more than 1000 nodes")
+        if len(self.edges) > 5000:
+            raise ValueError("Graph cannot contain more than 5000 edges")
+        return self
 
     @model_validator(mode="after")
     def validate_edges_reference_nodes(self):

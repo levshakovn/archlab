@@ -1,20 +1,25 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { HomePage } from './components/HomePage'
+import { PWAInstallPrompt } from './components/PWAInstallPrompt'
+import { SkipLink } from './components/SkipLink'
 import { usePageTracking } from './hooks/usePageTracking'
 
 // Lazy load heavy components for code splitting
 const PuzzleWorkspace = lazy(() => import('./components/PuzzleWorkspace').then(module => ({ default: module.PuzzleWorkspace })))
+const PuzzlesPage = lazy(() => import('./components/PuzzlesPage').then(module => ({ default: module.PuzzlesPage })))
 const ProfilePage = lazy(() => import('./components/ProfilePage').then(module => ({ default: module.ProfilePage })))
+const SolutionViewer = lazy(() => import('./components/SolutionViewer').then(module => ({ default: module.SolutionViewer })))
 const SupabaseTest = lazy(() => import('./components/SupabaseTest').then(module => ({ default: module.SupabaseTest })))
 const AuthCallback = lazy(() => import('./components/auth/AuthCallback').then(module => ({ default: module.AuthCallback })))
 const ResetPasswordPage = lazy(() => import('./components/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })))
 
 // Loading fallback component
 const LoadingFallback = () => (
-  <div className="min-h-screen bg-gradient-to-br from-white to-blue-50/20 flex items-center justify-center">
+  <div className="min-h-screen bg-gradient-to-br from-white to-blue-50/20 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
     <div className="text-center">
       <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
       <p className="text-text-secondary">Loading...</p>
@@ -26,8 +31,12 @@ function AppContent() {
   usePageTracking()
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+    <>
+      <SkipLink />
+      <div id="announcements" aria-live="polite" aria-atomic="true" className="sr-only"></div>
+      <PWAInstallPrompt />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
         <Route path="/" element={<HomePage />} />
         <Route 
           path="/workspace" 
@@ -36,6 +45,14 @@ function AppContent() {
               <PuzzleWorkspace />
             </Suspense>
           } 
+        />
+        <Route
+          path="/puzzles"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PuzzlesPage />
+            </Suspense>
+          }
         />
         <Route
           path="/profile"
@@ -71,18 +88,29 @@ function AppContent() {
             </Suspense>
           } 
         />
+        <Route 
+          path="/share/:puzzleId" 
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <SolutionViewer />
+            </Suspense>
+          } 
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
+    </>
   )
 }
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </ThemeProvider>
     </AuthProvider>
   )
 }

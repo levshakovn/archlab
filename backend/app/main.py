@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.v1 import endpoints
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.middleware.security import CSRFProtectionMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 
 # Setup logging
 setup_logging(settings.LOG_LEVEL)
@@ -14,7 +16,19 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Add CORS middleware
+# Store settings in app state for middleware access
+app.state.settings = settings
+
+# Add security middleware (order matters - security headers first)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add rate limiting (100 requests per minute per IP)
+app.add_middleware(RateLimitMiddleware, calls=100, period=60)
+
+# Add CSRF protection
+app.add_middleware(CSRFProtectionMiddleware, allowed_origins=settings.CORS_ORIGINS)
+
+# Add CORS middleware (after CSRF to allow proper origin checking)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -25,6 +39,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(endpoints.grading.router, prefix="/api/v1", tags=["grading"])
+app.include_router(endpoints.ai.router, prefix="/api/v1", tags=["ai"])
 
 
 # Health check

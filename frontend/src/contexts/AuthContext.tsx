@@ -38,6 +38,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const supabase = getSupabaseClient()
 
+  const buildProfileInsert = (user: User) => {
+    const metadata = user.user_metadata || {}
+    const fullName = typeof metadata.full_name === 'string' ? metadata.full_name.trim() : ''
+    const [firstName, ...rest] = fullName ? fullName.split(' ') : []
+    const lastName = rest.length > 0 ? rest.join(' ') : ''
+
+    return {
+      id: user.id,
+      email: user.email || '',
+      first_name: metadata.first_name || firstName || null,
+      last_name: metadata.last_name || lastName || null,
+      profile_photo_url: metadata.avatar_url || metadata.picture || null,
+    }
+  }
+
   // Load user and profile
   useEffect(() => {
     // Get initial session
@@ -78,7 +93,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) {
-        // If profile doesn't exist yet, it will be created on next sign in
+        if ((error as { code?: string }).code === 'PGRST116') {
+          const { data: userData } = await supabase.auth.getUser()
+          if (userData?.user) {
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert(buildProfileInsert(userData.user))
+            if (!insertError) {
+              await loadProfile(userId)
+              return
+            }
+          }
+        }
+
         console.warn('Profile not found, will be created on next auth event:', error.message)
         setProfile(null)
       } else {
@@ -129,6 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+        scopes: 'email profile',
       },
     })
     if (error) throw error

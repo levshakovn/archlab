@@ -106,34 +106,11 @@ export function createAppError(error: unknown, defaultMessage?: string): AppErro
  */
 export function getErrorMessage(error: unknown, context?: string): string {
   const appError = createAppError(error)
-  
+
   if (context) {
     return `${context}: ${appError.userMessage}`
   }
-  
+
   return appError.userMessage
 }
 
-/**
- * Hook for detecting online/offline status (returns boolean)
- * Note: This is a utility function, not a React hook (use with useState + useEffect)
- */
-export function createOnlineStatusDetector(
-  onStatusChange: (isOnline: boolean) => void
-): () => void {
-  const handleOnline = () => onStatusChange(true)
-  const handleOffline = () => onStatusChange(false)
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    
-    // Return cleanup function
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }
-
-  return () => {}
-}

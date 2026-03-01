@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -15,9 +16,9 @@ export default {
         success: '#4CAF50',
         warning: '#FF9800',
         error: '#F44336',
-        'bg-light': '#F5F5F5',
-        'text-primary': '#212121',
-        'text-secondary': '#757575',
+        'bg-light': 'var(--color-bg-light)',
+        'text-primary': 'var(--color-text-primary)',
+        'text-secondary': 'var(--color-text-secondary)',
       },
     },
   },

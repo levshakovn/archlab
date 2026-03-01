@@ -1,108 +1,92 @@
 {
   "puzzles": [
     {
-      "id": "puzzle-static-site-cdn",
-      "title": "Static Website with CDN",
-      "scenario": "Your company needs a simple marketing website with static content (HTML/CSS/JS). Users are global, and the site must be served over HTTPS with low latency. Objects must not be directly publicly accessible; all access should go through a CDN.",
+      "id": "puzzle-cloudfront-only-access",
+      "title": "Restrict Content Access to CloudFront Only",
+      "scenario": "A Solutions Architect is designing a web application that will serve static content in an Amazon S3 bucket and dynamic content hosted on Amazon EC2 instances behind an Application Load Balancer (ALB). The application will use Amazon CloudFront and the solution must ensure that content is available through CloudFront only—not via direct access to S3 or the ALB.",
       "requirements": [
-        "Host static content in an object storage bucket.",
-        "Serve content through a CDN distribution.",
-        "Connect CDN to storage with proper origin configuration."
+        "Serve static content from S3 and dynamic content from EC2 behind an ALB, both through CloudFront.",
+        "Restrict direct access so that S3 and the ALB origin are only reachable via CloudFront.",
+        "Use the appropriate mechanisms for S3 (origin identity) and for the custom origin (custom header plus WAF)."
       ],
       "advice": [
-        "Consider using S3 for object storage - it's designed for static websites.",
-        "A CDN service like CloudFront can help distribute content globally and improve latency.",
-        "Connect CloudFront to S3 as its origin, and use ACM to add an SSL certificate to CloudFront for HTTPS support."
+        "For S3: use an Origin Access Identity (OAI) with your CloudFront distribution and update the S3 bucket policy to allow access to the OAI only. Do not restrict S3 by CloudFront IP addresses—OAI is the correct approach.",
+        "For the custom origin (ALB/EC2): configure CloudFront to add a custom header to requests sent to the origin. Create a web ACL in AWS WAF with a rule that validates the presence of that custom header and associate the web ACL with the ALB (not with the CloudFront distribution), so only requests coming through CloudFront are allowed.",
+        "The ALB should not add the custom header to requests to EC2—CloudFront adds the header to requests it sends to the origin; WAF on the ALB then validates that header."
       ],
       "allowedServices": [
         "S3",
-        "S3 Access Point",
         "CloudFront",
-        "CloudFront Function",
-        "Lambda@Edge",
+        "EC2",
+        "ALB",
+        "WAF",
         "Route 53",
         "ACM",
-        "WAF",
-        "Shield",
-        "VPC Endpoint",
-        "CloudWatch Logs",
-        "CloudWatch"
+        "VPC",
+        "CloudWatch",
+        "CloudWatch Logs"
       ],
       "commonMistakes": [
-        "Making the S3 bucket public instead of using a private bucket with CDN origin access.",
-        "Skipping HTTPS or not attaching a certificate to the CDN.",
-        "Pointing DNS directly to the S3 website endpoint instead of the CDN.",
-        "Not restricting the CDN origin access to the S3 bucket."
+        "Configuring the S3 bucket policy to allow access from CloudFront IP addresses only (use an Origin Access Identity and allow the OAI only).",
+        "Creating a web ACL in AWS WAF to validate the custom header and associating it with the CloudFront distribution (associate the web ACL with the ALB so the custom origin only accepts requests that include the header from CloudFront).",
+        "Configuring the ALB to add a custom header to HTTP requests sent to the EC2 instances (CloudFront should add the custom header to requests sent to the origin; the ALB does not add it)."
       ],
+      "tags": {
+        "certification": ["SAA", "SAP"],
+        "category": ["storage", "cdn", "security", "networking"]
+      },
       "errorRules": {
         "requiredServices": {
           "S3": {
-            "message": "S3 is required to host static content for the website.",
+            "message": "S3 is required to host static content for the application.",
             "error": "Missing required service: S3 bucket"
           },
           "CloudFront": {
-            "message": "CloudFront CDN is required to serve content globally with low latency.",
+            "message": "CloudFront is required; content must be available through CloudFront only.",
             "error": "Missing required service: CloudFront distribution"
-          }
-        },
-        "forbiddenServices": {
-          "EC2": {
-            "message": "EC2 is not needed for a static website. Static content should be stored in S3, not on compute instances.",
-            "severity": "error"
-          },
-          "RDS": {
-            "message": "RDS is a database service and not needed for a static website with no backend.",
-            "severity": "error"
-          },
-          "Lambda": {
-            "message": "Lambda is not required for a simple static site. Consider if you need server-side processing.",
-            "severity": "warning"
-          },
-          "ECS": {
-            "message": "ECS is for containerized applications. Static sites don't need containers - use S3 instead.",
-            "severity": "error"
-          },
-          "Fargate": {
-            "message": "Fargate is for running containers. Static sites should use S3 for storage.",
-            "severity": "error"
           },
           "ALB": {
-            "message": "ALB is for load balancing dynamic applications. Static sites should use CloudFront CDN.",
-            "severity": "error"
+            "message": "An Application Load Balancer is required to serve dynamic content from EC2.",
+            "error": "Missing required service: ALB"
           },
-          "NLB": {
-            "message": "NLB is for load balancing dynamic applications. Static sites should use CloudFront CDN.",
-            "severity": "error"
+          "EC2": {
+            "message": "EC2 instances are required to host dynamic content behind the ALB.",
+            "error": "Missing required service: EC2"
           }
         },
         "requiredConnections": [
           {
             "from": "CloudFront",
             "to": "S3",
-            "message": "CloudFront must connect to S3 as its origin. Without this connection, CloudFront has no content to serve.",
+            "message": "CloudFront must connect to S3 as an origin for static content.",
             "error": "Missing required connection: CloudFront → S3"
+          },
+          {
+            "from": "CloudFront",
+            "to": "ALB",
+            "message": "CloudFront must connect to the ALB as the custom origin for dynamic content.",
+            "error": "Missing required connection: CloudFront → ALB"
+          },
+          {
+            "from": "ALB",
+            "to": "EC2",
+            "message": "The ALB must distribute traffic to EC2 instances.",
+            "error": "Missing required connection: ALB → EC2"
           }
         ],
         "wrongConnections": [
           {
-            "from": "S3",
-            "to": "CloudFront",
-            "message": "Connection direction is wrong. CloudFront should connect to S3 (CloudFront pulls from S3 origin), not S3 to CloudFront.",
-            "correctFlow": ["CloudFront", "S3"],
-            "severity": "error"
-          },
-          {
             "from": "Route 53",
             "to": "S3",
-            "message": "Don't point Route 53 directly to S3. Route 53 should point to CloudFront, which then connects to S3. This ensures all traffic goes through the CDN.",
+            "message": "Do not point DNS directly to S3. All access should go through CloudFront.",
             "correctFlow": ["Route 53", "CloudFront", "S3"],
             "severity": "error"
           },
           {
-            "from": "CloudFront",
-            "to": "Route 53",
-            "message": "CloudFront should not connect to Route 53. Route 53 is DNS and should point TO CloudFront, not the other way around.",
-            "correctFlow": ["Route 53", "CloudFront"],
+            "from": "Route 53",
+            "to": "ALB",
+            "message": "Do not point DNS directly to the ALB. All access should go through CloudFront.",
+            "correctFlow": ["Route 53", "CloudFront", "ALB"],
             "severity": "error"
           }
         ],
@@ -110,27 +94,27 @@
           "S3": [
             {
               "condition": "publicBucket",
-              "message": "S3 bucket should be private. All access should go through CloudFront using Origin Access Control (OAC) or Origin Access Identity (OAI). Public buckets are a security risk.",
+              "message": "S3 bucket should be private. Restrict access to CloudFront using an Origin Access Identity (OAI) and a bucket policy that allows the OAI only—not CloudFront IP addresses.",
               "severity": "error"
             }
           ],
           "CloudFront": [
             {
               "condition": "missingS3Origin",
-              "message": "CloudFront must have an S3 origin configured. Configure CloudFront to use your S3 bucket as the origin.",
+              "message": "CloudFront must have an S3 origin for static content. Use OAI (or OAC) and restrict the bucket to that identity.",
               "severity": "error"
             },
             {
-              "condition": "missingHTTPS",
-              "message": "CloudFront should use HTTPS. Attach an ACM (AWS Certificate Manager) certificate to enable HTTPS for secure access.",
+              "condition": "missingCustomOrigin",
+              "message": "CloudFront should have the ALB as a custom origin for dynamic content, with a custom header configured so only CloudFront requests are accepted at the origin.",
               "severity": "error"
             }
           ]
         },
         "flowValidation": {
-          "description": "User access flow should be: Route 53 (DNS) → CloudFront (CDN) → S3 (Storage)",
+          "description": "All traffic must flow through CloudFront: Route 53 → CloudFront → (S3 for static, ALB → EC2 for dynamic).",
           "correctFlow": ["Route 53", "CloudFront", "S3"],
-          "message": "The correct flow is: Users access via DNS (Route 53), which routes to CloudFront CDN, which fetches content from S3."
+          "message": "Users reach the app via CloudFront only. Static content is served from S3 via CloudFront; dynamic content is served from EC2 via CloudFront and the ALB. Use OAI for S3 and custom header + WAF on ALB for the custom origin."
         }
       }
     },
@@ -172,6 +156,10 @@
         "Scaling only up without allowing scale-down, wasting costs.",
         "Missing load balancer to distribute traffic across scaled instances."
       ],
+      "tags": {
+        "certification": ["SAA", "SOA"],
+        "category": ["compute", "networking"]
+      },
       "errorRules": {
         "requiredServices": {
           "ASG": {
@@ -256,6 +244,10 @@
         "Serving videos directly from S3 instead of using CDN, causing high latency.",
         "Not securing video URLs, allowing unauthorized access and downloads."
       ],
+      "tags": {
+        "certification": ["SAA", "DVA"],
+        "category": ["cdn", "storage", "networking"]
+      },
       "errorRules": {
         "requiredServices": {
           "S3": {
@@ -345,6 +337,10 @@
         "Keeping all backups in the same storage class, paying high costs for old backups.",
         "Missing automated transitions to cold storage, wasting storage costs."
       ],
+      "tags": {
+        "certification": ["SAA", "SOA"],
+        "category": ["storage", "security"]
+      },
       "errorRules": {
         "requiredServices": {
           "S3": {
@@ -400,6 +396,10 @@
         "Not collecting application logs centrally, making troubleshooting difficult.",
         "Setting alarm thresholds too high or too low, causing false positives or missed alerts."
       ],
+      "tags": {
+        "certification": ["SOA"],
+        "category": ["monitoring", "security"]
+      },
       "errorRules": {
         "requiredServices": {
           "CloudWatch": {
@@ -478,6 +478,10 @@
         "Deploying directly to production without testing in the pipeline.",
         "Missing IAM roles for pipeline services to access other resources."
       ],
+      "tags": {
+        "certification": ["DVA", "SOA"],
+        "category": ["devops", "security"]
+      },
       "errorRules": {
         "requiredServices": {
           "CodePipeline": {
@@ -562,6 +566,10 @@
         "Missing dead-letter queues for events that fail processing repeatedly.",
         "Over-using SNS when a more structured event bus like EventBridge is needed."
       ],
+      "tags": {
+        "certification": ["DVA", "SAA"],
+        "category": ["serverless", "messaging"]
+      },
       "errorRules": {
         "requiredServices": {
           "EventBridge": {
@@ -632,6 +640,10 @@
         "Not testing failover procedures regularly.",
         "Placing both regions in the same geographic area, not providing true disaster recovery."
       ],
+      "tags": {
+        "certification": ["SAA", "SOA"],
+        "category": ["networking", "security", "storage"]
+      },
       "errorRules": {
         "requiredServices": {
           "Route 53": {
@@ -698,6 +710,10 @@
         "Not buffering data during spikes, causing overload on processing services.",
         "Storing raw streams in expensive databases instead of using cost-effective storage."
       ],
+      "tags": {
+        "certification": ["DVA", "SAA"],
+        "category": ["data", "analytics", "messaging"]
+      },
       "errorRules": {
         "requiredServices": {
           "Kinesis Data Streams": {
@@ -777,6 +793,10 @@
         "Allowing HTTP uploads instead of requiring HTTPS.",
         "Not validating file types, allowing malicious uploads."
       ],
+      "tags": {
+        "certification": ["SAA", "DVA"],
+        "category": ["security", "storage"]
+      },
       "errorRules": {
         "requiredServices": {
           "S3": {
@@ -843,6 +863,10 @@
         "Using EC2 directly instead of container orchestration, making scaling difficult.",
         "Missing container registry, forcing manual image management."
       ],
+      "tags": {
+        "certification": ["SAA", "DVA"],
+        "category": ["containers", "compute", "networking"]
+      },
       "errorRules": {
         "requiredServices": {
           "ECS": {
@@ -921,6 +945,10 @@
         "Storing job data in expensive storage instead of S3.",
         "Running batch jobs during peak hours instead of scheduling for off-peak."
       ],
+      "tags": {
+        "certification": ["SAA"],
+        "category": ["compute", "cost"]
+      },
       "errorRules": {
         "requiredServices": {
           "Batch": {
@@ -987,6 +1015,10 @@
         "Not handling authentication for IoT devices, creating security risks.",
         "Processing all data in real-time instead of using appropriate storage for historical analytics."
       ],
+      "tags": {
+        "certification": ["DVA", "SAA"],
+        "category": ["messaging", "data"]
+      },
       "errorRules": {
         "requiredServices": {
           "IoT Core": {
@@ -1066,6 +1098,10 @@
         "Storing passwords in plaintext instead of using Cognito's secure password management.",
         "Missing token expiration, creating security risks with long-lived tokens."
       ],
+      "tags": {
+        "certification": ["DVA", "SOA"],
+        "category": ["security", "networking", "serverless"]
+      },
       "errorRules": {
         "requiredServices": {
           "API Gateway": {
@@ -1140,6 +1176,10 @@
         "Disabling point-in-time recovery to save costs, reducing recovery options.",
         "Not testing backup restoration, discovering issues only during disasters."
       ],
+      "tags": {
+        "certification": ["SAA", "SOA"],
+        "category": ["data", "storage"]
+      },
       "errorRules": {
         "requiredServices": {
           "DMS": {
@@ -1214,6 +1254,10 @@
         "Choosing wrong instance types for OpenSearch, causing performance issues or high costs.",
         "Missing connection between data source and search service for automatic indexing."
       ],
+      "tags": {
+        "certification": ["SAA"],
+        "category": ["data", "analytics"]
+      },
       "errorRules": {
         "requiredServices": {
           "OpenSearch": {
@@ -1288,6 +1332,10 @@
         "Deploying models directly to EC2 instead of managed endpoints, missing auto-scaling and monitoring.",
         "Not automating retraining, causing models to become stale as new data arrives."
       ],
+      "tags": {
+        "certification": ["SAA"],
+        "category": ["ml", "data"]
+      },
       "errorRules": {
         "requiredServices": {
           "SageMaker": {
@@ -1359,6 +1407,10 @@
         "Missing error handling in workflows, causing entire workflows to fail on single step errors.",
         "Not maintaining workflow execution history, making debugging and auditing difficult."
       ],
+      "tags": {
+        "certification": ["DVA", "SAA"],
+        "category": ["serverless", "data"]
+      },
       "errorRules": {
         "requiredServices": {
           "Step Functions": {
@@ -1433,6 +1485,10 @@
         "Not invalidating cache when data changes, serving outdated information to users.",
         "Using wrong caching service (e.g., S3) instead of in-memory cache for fast access."
       ],
+      "tags": {
+        "certification": ["SAA", "DVA"],
+        "category": ["performance", "storage"]
+      },
       "errorRules": {
         "requiredServices": {
           "ElastiCache": {
@@ -1504,6 +1560,10 @@
         "Missing ETL orchestration, requiring manual data loading processes.",
         "Not providing dashboards for business users, limiting self-service analytics."
       ],
+      "tags": {
+        "certification": ["SAA"],
+        "category": ["data", "analytics"]
+      },
       "errorRules": {
         "requiredServices": {
           "Redshift": {

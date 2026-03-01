@@ -17,21 +17,21 @@ import { validatePassword } from '../utils/passwordValidation'
 function getScoreColor(score: number): { bg: string; text: string; border: string } {
   if (score === 100) {
     return {
-      bg: 'bg-green-50',
-      text: 'text-green-700',
-      border: 'border-green-400',
+      bg: 'bg-green-50 dark:bg-green-900/40',
+      text: 'text-green-700 dark:text-green-300',
+      border: 'border-green-400 dark:border-green-600',
     }
   } else if (score >= 80) {
     return {
-      bg: 'bg-yellow-50',
-      text: 'text-yellow-700',
-      border: 'border-yellow-400',
+      bg: 'bg-yellow-50 dark:bg-yellow-900/40',
+      text: 'text-yellow-700 dark:text-yellow-300',
+      border: 'border-yellow-400 dark:border-yellow-600',
     }
   } else {
     return {
-      bg: 'bg-red-50',
-      text: 'text-red-700',
-      border: 'border-red-400',
+      bg: 'bg-red-50 dark:bg-red-900/40',
+      text: 'text-red-700 dark:text-red-300',
+      border: 'border-red-400 dark:border-red-600',
     }
   }
 }
@@ -223,7 +223,7 @@ export function ProfilePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white">
+      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-950 dark:via-slate-900/40 dark:to-slate-950">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
@@ -243,7 +243,7 @@ export function ProfilePage() {
         keywords="AWS practice profile, architecture learning progress, cloud certification tracking"
         type="profile"
       />
-      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white">
+      <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-950 dark:via-slate-900/40 dark:to-slate-950">
         <Header />
       
       <main className="max-w-3xl mx-auto px-6 py-8">
@@ -317,21 +317,29 @@ export function ProfilePage() {
                   
                   // Get level based on completion percentage
                   const getLevel = (percent: number) => {
-                    if (percent === 100) return { name: "Cloud Overlord 👑", emoji: "👑", color: "text-yellow-600" }
-                    if (percent >= 95) return { name: "AWS Master 🏆", emoji: "🏆", color: "text-purple-600" }
-                    if (percent >= 75) return { name: "Cloud Guru 🌟", emoji: "🌟", color: "text-blue-600" }
-                    if (percent >= 50) return { name: "Senior Cloud Architect ⭐", emoji: "⭐", color: "text-green-600" }
-                    if (percent >= 25) return { name: "Cloud Architect ☁️", emoji: "☁️", color: "text-teal-600" }
-                    if (percent >= 5) return { name: "Junior Cloud Engineer 🚀", emoji: "🚀", color: "text-primary" }
-                    return { name: "On-Prem Guy 🏢", emoji: "🏢", color: "text-gray-600" }
+                    if (percent === 100) return { name: "Cloud Overlord 👑", emoji: "👑", color: "text-yellow-600", nextThreshold: null }
+                    if (percent >= 95) return { name: "AWS Master 🏆", emoji: "🏆", color: "text-purple-600", nextThreshold: 100 }
+                    if (percent >= 75) return { name: "Cloud Guru 🌟", emoji: "🌟", color: "text-blue-600", nextThreshold: 95 }
+                    if (percent >= 50) return { name: "Senior Cloud Architect ⭐", emoji: "⭐", color: "text-green-600", nextThreshold: 75 }
+                    if (percent >= 25) return { name: "Cloud Architect ☁️", emoji: "☁️", color: "text-teal-600", nextThreshold: 50 }
+                    if (percent >= 5) return { name: "Junior Cloud Engineer 🚀", emoji: "🚀", color: "text-primary", nextThreshold: 25 }
+                    return { name: "On-Prem Guy 🏢", emoji: "🏢", color: "text-gray-600", nextThreshold: 5 }
                   }
                   
                   const level = getLevel(percentage)
+                  const percentToNext = level.nextThreshold ? level.nextThreshold - percentage : null
                   
                   return (
-                    <div className={`mt-2 text-sm font-medium ${level.color} flex items-center justify-center gap-1.5`}>
-                      <span>{level.emoji}</span>
-                      <span>{level.name}</span>
+                    <div className="mt-2 flex flex-col items-center gap-1">
+                      <div className={`text-sm font-medium ${level.color} flex items-center justify-center gap-1.5`}>
+                        <span>{level.emoji}</span>
+                        <span>{level.name}</span>
+                      </div>
+                      {percentToNext !== null && percentToNext > 0 && (
+                        <p className="text-xs text-text-secondary">
+                          {percentToNext}% to next level
+                        </p>
+                      )}
                     </div>
                   )
                 })()}
@@ -571,7 +579,7 @@ export function ProfilePage() {
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : completions.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-gray-200">
+              <div className="text-center py-8 bg-gray-50 dark:bg-slate-800 rounded-lg border-2 border-gray-200 dark:border-slate-700">
                 <p className="text-text-secondary">No completed tasks yet. Start solving puzzles to see your progress here!</p>
               </div>
             ) : (
@@ -594,7 +602,7 @@ export function ProfilePage() {
                     <button
                       key={completion.id}
                       onClick={() => navigate('/workspace', { state: { puzzleId: completion.puzzle_id } })}
-                      className="w-full text-left p-4 bg-gray-50/50 hover:bg-gray-100/50 border border-gray-200 rounded-lg hover:border-primary/30 transition-all group"
+                      className="w-full text-left p-4 bg-gray-50/50 dark:bg-slate-800 hover:bg-gray-100/50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg hover:border-primary/30 dark:hover:border-primary/50 transition-all group"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
